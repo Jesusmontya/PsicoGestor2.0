@@ -1,0 +1,2371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Psicogestor 2.0 - Dashboard Profesional</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --psico-primary: #3a7bd5; 
+            --psico-secondary: #00d2ff; 
+            --psico-bg: #f8f9fa; 
+            --sidebar-bg: #ffffff;
+            --text-dark: #2c3e50;
+            --text-muted: #7f8c8d;
+            --card-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --transition-speed: 0.2s;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--psico-bg);
+            color: var(--text-dark);
+            overflow: hidden; 
+        }
+
+        .app-wrapper {
+            display: flex;
+            height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            transition: all var(--transition-speed);
+            z-index: 1000;
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .brand-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--psico-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-logo i {
+            font-size: 1.5rem;
+            color: var(--psico-secondary);
+        }
+
+        .nav-pills .nav-link {
+            color: var(--text-dark);
+            font-weight: 500;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0;
+            border-left: 4px solid transparent;
+            transition: all var(--transition-speed);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-pills .nav-link:hover {
+            background-color: rgba(58, 123, 213, 0.05);
+            color: var(--psico-primary);
+        }
+
+        .nav-pills .nav-link.active {
+            background-color: rgba(58, 123, 213, 0.1);
+            color: var(--psico-primary);
+            border-left-color: var(--psico-primary);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            background-color: #fcfcfc;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .top-navbar {
+            background-color: var(--sidebar-bg);
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content-container {
+            padding: 2rem;
+        }
+
+        .view-section {
+            display: none; 
+        }
+
+        .view-section.active {
+            display: block; 
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        .card-psico {
+            background: var(--sidebar-bg);
+            border: none;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s;
+        }
+
+        .card-psico:hover {
+            transform: translateY(-2px);
+        }
+
+        .kpi-title {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .kpi-value {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .btn-psico-primary {
+            background-color: var(--psico-primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn-psico-primary:hover {
+            background-color: #2c6dc5;
+            color: white;
+        }
+
+        .table-psico {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+
+        .table-psico thead th {
+            background-color: #fcfcfc;
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .table-psico tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid rgba(0,0,0,0.03);
+        }
+
+        .scroll-panel { 
+            height: calc(100vh - 350px); 
+            overflow-y: auto; 
+            padding-right: 5px; 
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* SCROLL BAR PARA EL CHAT Y MODAL */
+        #chat-ia-container::-webkit-scrollbar, .overflow-auto::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-ia-container::-webkit-scrollbar-thumb, .overflow-auto::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-wrapper">
+        
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <a href="#" class="brand-logo">
+                    <i class="bi bi-brain"></i>
+                    Psicogestor <span class="fw-light text-muted">2.0</span>
+                </a>
+            </div>
+            
+            <div class="sidebar-menu flex-grow-1">
+                <ul class="nav nav-pills flex-column m-0 mt-3">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link active" id="link-inicio" onclick="switchView('inicio')">
+                            <i class="bi bi-house-door"></i> Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" id="link-pacientes" onclick="switchView('pacientes')">
+                            <i class="bi bi-person-hearts"></i> Pacientes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" id="link-sesiones" onclick="switchView('sesiones')">
+                            <i class="bi bi-calendar-check"></i> Sesiones
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" id="link-finanzas" onclick="switchView('finanzas')">
+                            <i class="bi bi-cash-stack"></i> Finanzas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" id="link-reportes" onclick="switchView('reportes')">
+                            <i class="bi bi-bar-chart-line"></i> Reportes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" id="link-configuracion" onclick="switchView('configuracion')">
+                            <i class="bi bi-gear"></i> Configuración
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bg-secondary rounded-circle" style="width: 35px; height: 35px;"></div>
+                        <div>
+                            <div class="fw-bold" id="user-name-display" style="font-size: 0.85rem;">Verificando...</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Psicólogo Clínico</div>
+                        </div>
+                    </div>
+                    <button onclick="cerrarSesion()" class="btn btn-link text-danger p-0" title="Cerrar Sesión">
+                        <i class="bi bi-box-arrow-right fs-5"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            
+            <header class="top-navbar">
+                <div class="search-bar w-25">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control border-start-0" id="globalSearch" placeholder="Buscar paciente por nombre o teléfono...">
+                    </div>
+                </div>
+                <div class="top-actions d-flex align-items-center gap-3">
+                    <button class="btn btn-link text-muted p-0"><i class="bi bi-bell fs-5"></i></button>
+                    <button class="btn btn-outline-primary btn-sm fw-bold" style="border-color: var(--psico-primary); color: var(--psico-primary);" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">
+                        <i class="bi bi-person-plus me-1"></i> Nuevo Paciente
+                    </button>
+                    <button class="btn-psico-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevaCitaModal">
+                        <i class="bi bi-plus-lg me-1"></i> Nueva Cita
+                    </button>
+                </div>
+            </header>
+
+            <div class="content-container">
+
+                <section id="view-inicio" class="view-section active">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h1 class="h3 fw-bold m-0" id="welcome-text">¡Hola!</h1>
+                            <p class="text-muted">Tu asistente Psicogestor tiene todo listo para hoy.</p>
+                        </div>
+                        <div class="badge bg-primary-subtle text-primary p-2 px-3 rounded-pill" id="current-date-display">
+                            <i class="bi bi-calendar3"></i> [Fecha de Hoy]
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-8">
+                            <div class="card-psico mb-0">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-robot me-2"></i>Resumen del Asistente</h5>
+                                <ul class="list-group list-group-flush" id="dashboard-summary-list">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                        <span class="text-muted"><i class="bi bi-check2-circle me-2"></i> <span id="dash-citas-count">0</span> Citas programadas para hoy.</span>
+                                        <a href="#" onclick="switchView('sesiones')" class="small text-decoration-none">Ver agenda</a>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                        <span class="text-muted"><i class="bi bi-file-earmark-pdf me-2"></i> 0 reportes pendientes.</span>
+                                        <a href="#" onclick="switchView('reportes')" class="small text-decoration-none">Revisar</a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="card-psico mt-4 border-start border-primary border-4">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-magic text-primary me-2"></i>Pregúntale a LucIA</h5>
+                                
+                                <div class="bg-light p-3 rounded mb-3" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column;" id="chat-ia-container">
+                                    <div class="text-start mb-2 pe-4">
+                                        <div class="d-inline-block bg-white border p-2 rounded small text-dark">
+                                            <em><i class="bi bi-robot text-primary me-1"></i> Hola, soy LucIA, tu asistente clínica. ¿En qué te ayudo hoy?</em>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <form onsubmit="event.preventDefault(); enviarMensajeIA();">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control form-control-sm border-primary-subtle" id="ia-prompt-input" placeholder="Escribe tu consulta clínica aquí...">
+                                        <button class="btn btn-psico-primary btn-sm" type="submit" id="btn-enviar-ia"><i class="bi bi-send"></i></button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card-psico bg-primary text-white h-100 d-flex flex-column">
+                                <h5 class="fw-bold mb-4 text-white">Acciones Rápidas</h5>
+                                
+                                <div class="bg-white bg-opacity-10 p-3 rounded mb-4 flex-grow-1">
+                                    <h6 class="small text-white-50 text-uppercase fw-bold mb-2"><i class="bi bi-clock-history me-1"></i> Próxima Sesión</h6>
+                                    <div id="proxima-sesion-container">
+                                        <div class="spinner-border spinner-border-sm text-light mb-2" role="status"></div>
+                                        <span class="small">Buscando agenda...</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn btn-light w-100 mb-3 text-primary fw-bold text-start shadow-sm" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">
+                                    <i class="bi bi-person-plus me-2"></i> Nuevo Paciente
+                                </button>
+                                <button class="btn btn-outline-light w-100 text-start" data-bs-toggle="modal" data-bs-target="#nuevaCitaModal">
+                                    <i class="bi bi-calendar-plus me-2"></i> Agendar Sesión
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-sesiones" class="view-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h1 class="h3 fw-bold m-0">Panel de Sesiones</h1>
+                        <button class="btn-psico-primary" id="btn-iniciar-sesion-rapida" data-bs-toggle="modal" data-bs-target="#sesionActivaModal">
+                            <i class="bi bi-play-circle me-1"></i> Iniciar Sesión Rápida
+                        </button>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card-psico border-top border-primary border-4 h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="fw-bold m-0 small text-primary text-uppercase"><i class="bi bi-calendar-event me-2"></i>Agenda de Hoy</h5>
+                                    <span class="badge bg-primary-subtle text-primary rounded-pill" id="badge-citas-hoy">0 Citas</span>
+                                </div>
+                                <div class="scroll-panel">
+                                    <div class="table-responsive table-psico border-0 shadow-none">
+                                        <table class="table table-hover align-middle m-0" id="tabla-agenda-hoy">
+                                            <thead class="small text-muted border-bottom">
+                                                <tr>
+                                                    <th>Hora</th>
+                                                    <th>Paciente</th>
+                                                    <th class="text-end">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="agendaHoyBody">
+                                                <tr id="agenda-empty-state">
+                                                    <td colspan="3" class="text-center py-5 text-muted small">
+                                                        <i class="bi bi-calendar-x fs-2 d-block mb-2 opacity-50"></i>
+                                                        No hay citas programadas para hoy.
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card-psico border-top border-secondary border-4 h-100">
+                                <h5 class="fw-bold mb-3 small text-muted text-uppercase"><i class="bi bi-archive me-2"></i>Historial Reciente</h5>
+                                <div class="scroll-panel">
+                                    <div class="table-responsive table-psico border-0 shadow-none">
+                                        <table class="table table-hover align-middle m-0" id="tabla-historial-sesiones">
+                                            <thead class="small text-muted border-bottom">
+                                                <tr>
+                                                    <th>Fecha</th>
+                                                    <th>Paciente</th>
+                                                    <th class="text-end">Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="historialSesionesBody">
+                                                <tr id="historial-empty-state">
+                                                    <td colspan="3" class="text-center py-5 text-muted small">
+                                                        <i class="bi bi-inboxes fs-2 d-block mb-2 opacity-50"></i>
+                                                        El historial de sesiones está vacío.
+                                                    </td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-pacientes" class="view-section">
+                    <h1 class="h3 fw-bold mb-4">Directorio de Pacientes</h1>
+                    <div class="card-psico text-center py-5" id="pacientes-container">
+                        <div class="spinner-border text-primary mt-4"></div>
+                        <p class="text-muted mt-2">Cargando directorio...</p>
+                    </div>
+                </section>
+
+                <section id="view-finanzas" class="view-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h1 class="h3 fw-bold m-0">Control Financiero</h1>
+                        <div class="d-flex gap-2">
+                            <button class="btn-psico-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#registroFinanzasModal">
+                                <i class="bi bi-plus-circle me-1"></i> Registrar Movimiento
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="card-psico h-100 border-start border-success border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="kpi-title text-success">Ingresos (Pagados)</div>
+                                        <div class="kpi-value text-success" id="kpi-ingresos">$0.00</div>
+                                    </div>
+                                    <i class="bi bi-graph-up-arrow fs-1 text-success opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card-psico h-100 border-start border-warning border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="kpi-title text-warning">Cuentas por Cobrar</div>
+                                        <div class="kpi-value text-warning" id="kpi-por-cobrar">$0.00</div>
+                                    </div>
+                                    <i class="bi bi-hourglass-split fs-1 text-warning opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card-psico h-100 border-start border-danger border-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <div class="kpi-title text-danger">Gastos Operativos</div>
+                                        <div class="kpi-value text-danger" id="kpi-gastos">$0.00</div>
+                                    </div>
+                                    <i class="bi bi-wallet2 fs-1 text-danger opacity-50"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-8">
+                            <h2 class="h5 fw-bold mb-3">Historial de Transacciones</h2>
+                            <div class="table-responsive table-psico mb-4">
+                                <table class="table table-hover table-striped m-0" id="tabla-finanzas">
+                                    <thead>
+                                        <tr>
+                                            <th>Fecha</th>
+                                            <th>Concepto</th>
+                                            <th>Método</th>
+                                            <th>Monto</th>
+                                            <th>Estado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="finanzasBody">
+                                        <tr id="finanzas-empty-state">
+                                            <td colspan="5" class="text-center text-muted py-5">
+                                                <i class="bi bi-receipt fs-2 d-block mb-2"></i>
+                                                No hay movimientos financieros registrados.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="card-psico border-start border-primary border-4 h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-magic text-primary me-2"></i>Asistente Financiero</h5>
+                                <div class="alert alert-primary p-3 small mb-3 border-0">
+                                    <i class="bi bi-lightbulb me-1"></i> <strong>Proyección LucIA:</strong> Aún no hay suficientes datos para proyectar los ingresos del próximo mes. Registra al menos 5 sesiones pagadas.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-reportes" class="view-section">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h1 class="h3 fw-bold m-0">Reportes y Analítica IA</h1>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-secondary btn-sm fw-bold" disabled>
+                                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Finanzas (Próximamente)
+                            </button>
+                            <button class="btn btn-secondary btn-sm fw-bold" disabled style="opacity: 0.7;">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> Informe NOM-004 (Próximamente)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-psico border-start border-primary border-4 mb-4 bg-primary-subtle">
+                        <div class="d-flex align-items-start gap-3">
+                            <i class="bi bi-magic fs-2 text-primary"></i>
+                            <div>
+                                <h6 class="fw-bold text-primary mb-1">Resumen Ejecutivo Semanal</h6>
+                                <p class="text-dark small mb-0" id="reporte-resumen-ia">Esperando datos suficientes para generar el análisis de patrones.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-4">
+                            <div class="card-psico h-100 text-center">
+                                <div class="text-muted small fw-bold text-uppercase mb-2">Tasa de Retención</div>
+                                <div class="display-5 fw-bold text-muted" id="kpi-retencion">--%</div>
+                                <div class="small text-muted mt-2">Sin datos suficientes</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card-psico h-100 text-center">
+                                <div class="text-muted small fw-bold text-uppercase mb-2">Tareas Completadas</div>
+                                <div class="display-5 fw-bold text-muted" id="kpi-tareas">--%</div>
+                                <div class="small text-muted mt-2">Promedio de apego al Plan (P)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card-psico h-100 text-center">
+                                <div class="text-muted small fw-bold text-uppercase mb-2">Cancelaciones Lunes</div>
+                                <div class="display-5 fw-bold text-muted" id="kpi-cancelaciones">--%</div>
+                                <div class="small text-muted mt-2">Sin tendencias detectadas</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mb-4">
+                        <div class="col-md-6">
+                            <div class="card-psico h-100">
+                                <h6 class="fw-bold mb-4 text-muted text-uppercase small"><i class="bi bi-bar-chart-fill me-2"></i>Motivos de Consulta Frecuentes</h6>
+                                <div class="text-center py-4" id="grafica-motivos-container">
+                                    <p class="text-muted small mb-0">No hay suficientes datos registrados para generar esta gráfica.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card-psico h-100">
+                                <h6 class="fw-bold mb-4 text-muted text-uppercase small"><i class="bi bi-exclamation-circle-fill me-2 text-warning"></i>Pacientes en Riesgo de Deserción</h6>
+                                <div class="text-center py-4" id="lista-riesgo-container">
+                                    <p class="text-muted small mb-0">No se detectan pacientes en riesgo en este momento.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-psico">
+                        <h6 class="fw-bold mb-3 text-muted text-uppercase small"><i class="bi bi-cloud-word me-2"></i>Nube de Conceptos Clave (Mes actual)</h6>
+                        <div class="p-5 bg-light rounded text-center" id="nube-palabras-container">
+                            <p class="text-muted small mb-0">Registra más sesiones para que LucIA extraiga los conceptos clave de tus pacientes.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="view-configuracion" class="view-section">
+                    <h1 class="h3 fw-bold mb-4">Configuración del Sistema</h1>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card-psico h-100">
+                                <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-camera-video me-2"></i>Canales de Atención Virtual</h5>
+                                <p class="text-muted small">Configura tus enlaces permanentes para que el asistente los envíe automáticamente a tus pacientes.</p>
+                                <form onsubmit="event.preventDefault(); guardarLinksVirtuales();">
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold text-muted">Enlace Google Meet</label>
+                                        <input type="text" class="form-control form-control-sm" id="cfg-meet" placeholder="https://meet.google.com/xxx-xxxx-xxx">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold text-muted">Enlace Sala Zoom</label>
+                                        <input type="text" class="form-control form-control-sm" id="cfg-zoom" placeholder="https://zoom.us/j/xxxxxxxxxx">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold text-muted">Usuario FaceTime (Email/Tel)</label>
+                                        <input type="text" class="form-control form-control-sm" id="cfg-face" placeholder="ejemplo@email.com">
+                                    </div>
+                                    <button type="submit" class="btn btn-psico-primary btn-sm w-100 mt-2">Guardar Enlaces</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="card-psico h-100">
+                                <h5 class="fw-bold mb-3"><i class="bi bi-shield-lock me-2"></i>Seguridad de Sincronización</h5>
+                                <p class="text-muted small">Genera la llave maestra para conectar los teléfonos de tus pacientes al asistente virtual.</p>
+                                <div class="alert alert-light border small">
+                                    <strong>Token de Conexión:</strong> <code class="text-primary" id="display-token">[Token_Generado]</code>
+                                </div>
+                                <button class="btn btn-outline-secondary btn-sm w-100 mb-2">Generar Nuevo Token</button>
+                                <button class="btn btn-outline-danger btn-sm w-100">Revocar Todos los Accesos</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-4 mt-1">
+                        <div class="col-md-12 mt-4">
+                            <div class="card-psico border-start border-success border-4">
+                                <h5 class="fw-bold mb-3 text-success"><i class="bi bi-calendar-sync me-2"></i>Sincronización de Calendarios (Webcal)</h5>
+                                <p class="text-muted small">Copia este enlace y agrégalo como "Calendario Suscrito" en tu iPhone (Apple Calendar) o Google Calendar. Tus citas agendadas aparecerán en tu celular automáticamente.</p>
+                                
+                                <div class="input-group mb-3 mt-4">
+                                    <span class="input-group-text bg-light text-muted"><i class="bi bi-link-45deg"></i></span>
+                                    <input type="text" class="form-control text-muted" id="url-calendario-suscripcion" readonly value="Generando enlace...">
+                                    <button class="btn btn-success fw-bold" type="button" onclick="copiarLinkCalendario()"><i class="bi bi-clipboard me-1"></i> Copiar</button>
+                                </div>
+                                
+                                <div class="small text-muted bg-light p-3 rounded">
+                                    <i class="bi bi-apple me-1 text-dark"></i> <strong>Apple:</strong> Configuración > Calendario > Cuentas > Agregar > Otra > Calendario Suscrito.<br>
+                                    <i class="bi bi-google me-1 text-danger mt-2 d-inline-block"></i> <strong>Google:</strong> Desde tu PC entra a Google Calendar > Agregar calendario > Desde URL.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <div class="modal fade" id="nuevaCitaModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg border-0">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="nuevaCitaModalLabel">Agendar Nueva Cita</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formNuevaCita" onsubmit="event.preventDefault(); guardarNuevaCita();">
+                        <h6 class="fw-bold text-primary mb-3">1. Identificación</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label text-muted small mb-1">Paciente *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+                                    <select class="form-select border-start-0" id="cita-paciente-select" required>
+                                        <option selected disabled value="">Seleccionar paciente...</option>
+                                    </select>
+                                    <button class="btn btn-outline-primary" type="button" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()"><i class="bi bi-plus-lg"></i></button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Tipo de Consulta *</label>
+                                <select class="form-select" id="cita-tipo" required>
+                                    <option selected disabled value="">Seleccionar...</option>
+                                    <option value="Primera Vez">Primera Vez</option>
+                                    <option value="Seguimiento">Seguimiento</option>
+                                    <option value="Urgencia">Urgencia</option>
+                                    <option value="Cierre">Cierre de Proceso</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-primary mb-3">2. Logística</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Fecha *</label>
+                                <input type="date" class="form-control" id="cita-fecha" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Hora *</label>
+                                <input type="time" class="form-control" id="cita-hora" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Modalidad *</label>
+                                <div class="d-flex gap-3 mt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="modalidadRadio" id="modPresencial" value="presencial" checked>
+                                        <label class="form-check-label" for="modPresencial">Presencial</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="modalidadRadio" id="modLinea" value="en linea">
+                                        <label class="form-check-label" for="modLinea">En línea</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-primary mb-3">3. Notas Rápidas</h6>
+                        <div class="mb-3">
+                            <textarea class="form-control" rows="2" id="cita-notas" placeholder="Motivo de consulta, observaciones pre-sesión..."></textarea>
+                        </div>
+                        
+                        <hr class="text-muted opacity-25">
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" id="syncCitaCalendario">
+                            <label class="form-check-label small fw-bold text-muted" for="syncCitaCalendario">
+                                <i class="bi bi-calendar-check text-success me-1"></i> Forzar sincronización manual (descargar archivo .ics)
+                            </label>
+                        </div>
+                        
+                        <div class="modal-footer border-top-0 pt-0 px-0 pb-0 mt-3">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn-psico-primary" id="btnGuardarCita">Guardar Cita</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="nuevoPacienteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg border-0">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="nuevoPacienteModalLabel">Registrar Nuevo Paciente</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formNuevoPaciente" onsubmit="event.preventDefault(); guardarNuevoPaciente();">
+                        <h6 class="fw-bold text-primary mb-3">1. Identidad (NOM-004)</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Nombre Completo *</label>
+                                <input type="text" class="form-control" id="pac-nombre" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-muted small mb-1">Fecha Nac. *</label>
+                                <input type="date" class="form-control" id="pac-fecha-nac" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-muted small mb-1">Género *</label>
+                                <select class="form-select" id="pac-genero" required>
+                                    <option selected disabled value="">Seleccionar...</option>
+                                    <option value="hombre">Hombre</option>
+                                    <option value="mujer">Mujer</option>
+                                    <option value="otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Estado Civil *</label>
+                                <select class="form-select" id="pac-estado-civil" required>
+                                    <option selected disabled value="">Seleccionar...</option>
+                                    <option value="soltero">Soltero/a</option>
+                                    <option value="casado">Casado/a</option>
+                                    <option value="divorciado">Divorciado/a</option>
+                                    <option value="viudo">Viudo/a</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Ocupación *</label>
+                                <input type="text" class="form-control" id="pac-ocupacion" required>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-primary mb-3">2. Contacto y Seguridad</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Teléfono (WhatsApp) *</label>
+                                <input type="tel" class="form-control" id="pac-telefono" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Email (Opcional)</label>
+                                <input type="email" class="form-control" id="pac-email">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted small mb-1">Domicilio (Opcional)</label>
+                                <input type="text" class="form-control" id="pac-domicilio">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Contacto Emergencia *</label>
+                                <input type="text" class="form-control" id="pac-contacto-emergencia" placeholder="Nombre y parentesco" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Tel. Emergencia *</label>
+                                <input type="tel" class="form-control" id="pac-tel-emergencia" required>
+                            </div>
+                        </div>
+
+                        <h6 class="fw-bold text-primary mb-3">3. Datos Clínicos</h6>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small mb-1">Motivo de Consulta *</label>
+                                <textarea class="form-control" rows="2" id="pac-motivo" required></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-1">
+                                    <input class="form-check-input" type="checkbox" id="pac-terapia-previa">
+                                    <label class="form-check-label text-muted small" for="pac-terapia-previa">¿Ha asistido a terapia antes?</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Alergias/Meds (Opcional)</label>
+                                <input type="text" class="form-control" id="pac-alergias" placeholder="Medicamentos actuales o alergias">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="fw-bold text-primary m-0">4. Otros Campos Personalizados</h6>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addCustomField()">
+                                <i class="bi bi-plus-circle me-1"></i> Agregar Campo
+                            </button>
+                        </div>
+                        <div id="customFieldsContainer" class="row g-2 mb-3">
+                            </div>
+                        
+                        <div class="modal-footer border-top-0 pt-0 px-0 pb-0 mt-4">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn-psico-primary" id="btnGuardarPaciente">Guardar Paciente</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="sesionActivaModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl border-0">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 bg-light pb-3">
+                    <div class="w-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="modal-title fw-bold text-primary"><i class="bi bi-record-circle text-danger me-2"></i>Sesión en Curso</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="d-flex flex-wrap align-items-center gap-3">
+                            <select class="form-select form-select-sm shadow-sm" id="selectPacienteSesion" style="max-width: 300px;">
+                                <option value="" selected disabled>Seleccionar cita o paciente...</option>
+                            </select>
+                            
+                            <div class="d-flex align-items-center gap-2 bg-white p-1 px-2 rounded border border-primary-subtle shadow-sm">
+                                <span class="small text-muted fw-bold">Vía:</span>
+                                <select class="form-select form-select-sm border-0" id="sesion-via" style="width: 110px; box-shadow: none;">
+                                    <option value="presencial">Presencial</option>
+                                    <option value="meet">Google Meet</option>
+                                    <option value="zoom">Zoom</option>
+                                    <option value="face">FaceTime</option>
+                                </select>
+                                <button class="btn btn-outline-primary btn-sm py-1 px-2 small" onclick="validarYAccionar('generar')" title="Generar Link Único">
+                                    <i class="bi bi-link-45deg"></i> Generar
+                                </button>
+                                <button class="btn btn-psico-primary btn-sm py-1 px-2 small" onclick="validarYAccionar('enviar')" title="Enviar Link a Paciente">
+                                    <i class="bi bi-send-fill"></i> Enviar
+                                </button>
+                            </div>
+                            <span class="badge bg-white text-muted border py-2 px-3 ms-auto"><i class="bi bi-clock-history me-1"></i> <span id="sesion-timer">00:00:00</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body p-4 bg-white">
+                    <div class="row g-4">
+                        <div class="col-md-3 border-end">
+                            <h6 class="fw-bold text-muted mb-3"><i class="bi bi-journal-bookmark me-1"></i>Contexto Anterior</h6>
+                            <div class="p-3 bg-light rounded text-muted small mb-3" id="sesion-contexto-ia">
+                                <em>Selecciona un paciente para ver su historial.</em>
+                            </div>
+                            <div class="alert alert-secondary p-2 small mb-0 text-muted border-0" id="sesion-sugerencia-ia">
+                                <i class="bi bi-magic me-1"></i> <strong>Sugerencia LucIA:</strong> Esperando datos de la sesión para generar sugerencias...
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-9">
+                            <h6 class="fw-bold text-primary mb-3"><i class="bi bi-pencil-square me-1"></i>Notas Clínicas (Formato SOAP)</h6>
+                            <form id="formNotasSOAP" onsubmit="event.preventDefault(); finalizarSesionSOAP();">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-bold mb-1">S - Subjetivo (Lo que refiere el paciente)</label>
+                                        <textarea class="form-control bg-light border-0" id="soap-s" rows="4"></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-bold mb-1">O - Objetivo (Lo que observas)</label>
+                                        <textarea class="form-control bg-light border-0" id="soap-o" rows="4"></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-bold mb-1">A - Análisis (Evaluación profesional)</label>
+                                        <textarea class="form-control bg-light border-0" id="soap-a" rows="4"></textarea>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label text-muted small fw-bold mb-1">P - Plan (Próximos pasos y tareas)</label>
+                                        <textarea class="form-control bg-light border-0" id="soap-p" rows="4"></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer border-top-0 pt-3 px-0 pb-0 bg-light mt-3">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="pausarSesion()">Pausar Sesión</button>
+                                    <button type="submit" class="btn-psico-primary"><i class="bi bi-check-circle me-1"></i> Finalizar y Analizar con IA</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="registroFinanzasModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered border-0">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="registroFinanzasModalLabel">Registrar Movimiento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="formRegistroFinanzas" onsubmit="event.preventDefault(); guardarFinanza();">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small mb-1">Tipo de Movimiento *</label>
+                                <select class="form-select" id="fin-tipo" required>
+                                    <option selected disabled value="">Seleccionar...</option>
+                                    <option value="ingreso">Ingreso (Cobro a paciente, etc.)</option>
+                                    <option value="egreso">Egreso (Renta, papelería, servicios)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label text-muted small mb-1">Concepto / Paciente *</label>
+                                <input type="text" class="form-control" id="fin-concepto" placeholder="Ej: Sesión Ana o Pago de Internet" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Monto ($) *</label>
+                                <input type="number" class="form-control" id="fin-monto" step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Fecha *</label>
+                                <input type="date" class="form-control" id="fin-fecha" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Método de Pago *</label>
+                                <select class="form-select" id="fin-metodo" required>
+                                    <option selected disabled value="">Seleccionar...</option>
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="transferencia">Transferencia</option>
+                                    <option value="tarjeta">Tarjeta</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted small mb-1">Estado *</label>
+                                <select class="form-select" id="fin-estado" required>
+                                    <option selected disabled value="">Seleccionar...</option>
+                                    <option value="pagado">Pagado</option>
+                                    <option value="pendiente">Pendiente</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pt-0 px-0 pb-0 mt-3">
+                            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn-psico-primary" id="btnGuardarFinanza">Guardar Movimiento</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="expedienteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl border-0">
+            <div class="modal-content border-0 shadow-lg" style="height: 85vh;">
+                <div class="modal-header bg-light border-bottom-0 pb-3">
+                    <div>
+                        <h5 class="modal-title fw-bold text-dark"><i class="bi bi-folder2-open text-primary me-2"></i>Expediente Clínico</h5>
+                        <div class="text-muted small mt-1" id="expediente-paciente-nombre">Cargando...</div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0 d-flex" style="background-color: var(--psico-bg);">
+                    
+                    <div class="w-25 bg-white border-end p-4 overflow-auto">
+                        
+                        <div class="text-center mb-4">
+                            <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                <i class="bi bi-person"></i>
+                            </div>
+                            <h6 class="fw-bold mb-0" id="exp-nombre">Cargando...</h6>
+                            <span class="badge bg-light text-dark border mt-1" id="exp-edad">...</span>
+                            
+                            <button class="btn btn-link btn-sm text-primary p-0 mt-2 text-decoration-none d-block w-100" id="btnEditarExpediente">
+                                <i class="bi bi-pencil-square"></i> Editar Información
+                            </button>
+                        </div>
+                        
+                        <div class="small mb-4">
+                            <div class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Contacto</div>
+                            <div class="mb-1"><i class="bi bi-whatsapp text-success me-2"></i><span id="exp-tel"></span></div>
+                            <div class="mb-1"><i class="bi bi-envelope text-secondary me-2"></i><span id="exp-email"></span></div>
+                            <div class="mb-1"><i class="bi bi-geo-alt text-secondary me-2"></i><span id="exp-domicilio"></span></div>
+                        </div>
+
+                        <div class="small mb-4 bg-danger-subtle p-2 rounded border border-danger-subtle">
+                            <div class="text-danger fw-bold text-uppercase mb-1" style="font-size: 0.7rem;"><i class="bi bi-exclamation-circle me-1"></i>Emergencia</div>
+                            <div class="fw-bold text-dark" id="exp-emergencia-nombre"></div>
+                            <div><i class="bi bi-telephone-fill text-danger me-2"></i><span id="exp-emergencia-tel"></span></div>
+                        </div>
+
+                        <div class="small mb-4">
+                            <div class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Motivo de Consulta</div>
+                            <p class="text-dark bg-light p-2 rounded border" id="exp-motivo"></p>
+                        </div>
+
+                        <div class="small mb-4">
+                            <div class="text-muted fw-bold text-uppercase mb-1" style="font-size: 0.7rem;">Notas / Alergias / Extras</div>
+                            <p class="text-dark bg-light p-2 rounded border mb-0" style="white-space: pre-wrap;" id="exp-notas-extra"></p>
+                        </div>
+                        
+                        <hr class="text-muted opacity-25">
+
+                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-magic me-2"></i>Análisis de LucIA</h6>
+                        <div class="alert alert-secondary border-0 p-3 small text-muted text-center mb-4" id="expediente-ia-data">
+                            <i class="bi bi-bar-chart-steps fs-3 d-block mb-2"></i>
+                            LucIA necesita al menos 1 sesión registrada para generar un análisis.
+                        </div>
+
+                        <h6 class="fw-bold text-muted mb-3 mt-4">Progreso Clínico</h6>
+                        <div class="text-center text-muted small p-3 bg-light rounded" id="expediente-kpis-data">
+                            Las gráficas de ansiedad y ánimo aparecerán aquí automáticamente.
+                        </div>
+                    </div>
+                    
+                    <div class="w-75 p-4 overflow-auto">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="fw-bold m-0">Línea de Tiempo de Sesiones</h5>
+                            <button class="btn btn-outline-primary btn-sm"><i class="bi bi-funnel"></i> Filtrar</button>
+                        </div>
+                        
+                        <div class="bg-white p-5 rounded-4 shadow-sm text-center" id="expediente-timeline-data">
+                            <i class="bi bi-clock-history fs-1 text-muted opacity-50 mb-3 d-block"></i>
+                            <h6 class="fw-bold text-muted">Aún no hay notas en este expediente</h6>
+                            <p class="text-muted small mb-0">Cuando finalices una sesión, las notas SOAP y las tareas asignadas se irán apilando aquí cronológicamente.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-white">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cerrar Expediente</button>
+                    <button type="button" class="btn btn-psico-primary" data-bs-toggle="modal" data-bs-target="#sesionActivaModal">Iniciar Nueva Sesión</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================
+        // 1. SEGURIDAD Y CONEXIÓN SUPABASE
+        // ==========================================
+        const SUPABASE_URL = 'https://adbklyrecnyryusktftr.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYmtseXJlY255cnl1c2t0ZnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjQ5MTIsImV4cCI6MjA5MDg0MDkxMn0.sK3cbVoRX1PjQx9Me-9PTFXq0wEpWB1JR7EuVby4Gpw'; 
+        
+        const spb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let pacientesCache = []; 
+        let citasHoyCache = []; 
+        let editandoPacienteId = null; 
+        let configProfesional = { link_meet: '', link_zoom: '', usuario_facetime: '' };
+        let isPausando = false;
+
+        async function verificarSeguridad() {
+            const { data: { session }, error } = await spb.auth.getSession();
+
+            if (!session) {
+                window.location.replace('login.html');
+            } else {
+                const nombreDoctor = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
+                const userDisplay = document.getElementById('user-name-display');
+                if(userDisplay) userDisplay.innerText = nombreDoctor;
+                const welcomeText = document.getElementById('welcome-text');
+                if(welcomeText) welcomeText.innerText = `¡Hola, ${nombreDoctor}!`;
+
+                // NUEVO: Generar URL de suscripción del calendario automáticamente
+                const calInput = document.getElementById('url-calendario-suscripcion');
+                if (calInput) {
+                    calInput.value = `${window.location.origin}/api/calendario/${session.user.id}/psicogestor.ics`;
+                }
+
+                cargarPacientes();
+                cargarAgendaHoy();
+                cargarHistorialReciente();
+                cargarConfiguracion(); 
+                cargarProximaSesion(); 
+                actualizarBotonSesion();
+                cargarFinanzas(); 
+            }
+        }
+
+        async function cerrarSesion() {
+            await spb.auth.signOut();
+            window.location.replace('login.html');
+        }
+
+        async function cargarConfiguracion() {
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+                const { data, error } = await spb.from('perfiles_profesionales').select('link_meet, link_zoom, usuario_facetime').eq('id', session.user.id).single();
+                if (error && error.code !== 'PGRST116') throw error; 
+                if (data) {
+                    configProfesional = data;
+                    document.getElementById('cfg-meet').value = data.link_meet || '';
+                    document.getElementById('cfg-zoom').value = data.link_zoom || '';
+                    document.getElementById('cfg-face').value = data.usuario_facetime || '';
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        verificarSeguridad();
+        
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('current-date-display').innerHTML = `<i class="bi bi-calendar3 me-1"></i> ` + new Date().toLocaleDateString('es-ES', dateOptions);
+
+        // ==========================================
+        // BUSCADOR GLOBAL EN TIEMPO REAL
+        // ==========================================
+        document.getElementById('globalSearch').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            
+            if(term.length > 0 && document.getElementById('view-pacientes').style.display !== 'block') {
+                switchView('pacientes'); 
+            }
+
+            const filtrados = pacientesCache.filter(p => 
+                p.nombre.toLowerCase().includes(term) || 
+                (p.telefono_whatsapp && p.telefono_whatsapp.includes(term))
+            );
+            renderizarTablaPacientes(filtrados);
+        });
+
+        // ==========================================
+        // 2. PANEL DE SESIONES DINÁMICO (AGENDA E HISTORIAL)
+        // ==========================================
+        
+        async function marcarCitaCompletada(citaId) {
+            try {
+                const { error } = await spb.from('citas').update({ estado: 'completada' }).eq('id', citaId);
+                if (error) throw error;
+                cargarAgendaHoy();
+                cargarProximaSesion();
+            } catch (err) {
+                console.error("Error al completar cita:", err);
+                alert("Error al marcar la cita como completada.");
+            }
+        }
+
+        async function cargarAgendaHoy() {
+            const tbody = document.getElementById('agendaHoyBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando agenda...</td></tr>';
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
+
+                const { data, error } = await spb.from('citas')
+                    .select(`id, fecha_hora, estado, paciente_id, pacientes ( nombre )`)
+                    .eq('profesional_id', session.user.id)
+                    .gte('fecha_hora', todayStart.toISOString())
+                    .lte('fecha_hora', todayEnd.toISOString())
+                    .order('fecha_hora', { ascending: true });
+
+                if (error) throw error;
+
+                citasHoyCache = data; 
+                actualizarDropdownSesionActiva(); 
+
+                document.getElementById('badge-citas-hoy').innerText = `${data.length} Citas`;
+                document.getElementById('dash-citas-count').innerText = data.length;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `
+                        <tr id="agenda-empty-state">
+                            <td colspan="3" class="text-center py-5 text-muted small">
+                                <i class="bi bi-calendar-x fs-2 d-block mb-2 opacity-50"></i>
+                                No hay citas programadas para hoy.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    let html = '';
+                    data.forEach(cita => {
+                        const horaFormat = new Date(cita.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        const nombrePaciente = cita.pacientes ? (Array.isArray(cita.pacientes) ? cita.pacientes[0].nombre : cita.pacientes.nombre) : 'Paciente Desconocido';
+                        const isCompletada = cita.estado === 'completada';
+                        
+                        if (isCompletada) {
+                            html += `
+                                <tr class="opacity-50 bg-light">
+                                    <td><span class="badge bg-secondary text-white border">${horaFormat}</span></td>
+                                    <td class="text-muted text-decoration-line-through small">${nombrePaciente}</td>
+                                    <td class="text-end">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-all"></i> Completada</span>
+                                    </td>
+                                </tr>
+                            `;
+                        } else {
+                            html += `
+                                <tr>
+                                    <td><span class="badge bg-light text-dark border">${horaFormat}</span></td>
+                                    <td class="fw-bold small">${nombrePaciente}</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-success py-0 px-2 me-1" onclick="marcarCitaCompletada('${cita.id}')" title="Marcar como completada"><i class="bi bi-check-lg"></i></button>
+                                        <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="abrirExpediente('${cita.paciente_id}')" title="Abrir expediente">Abrir</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    });
+                    tbody.innerHTML = html;
+                }
+
+            } catch (err) {
+                console.error("Error al cargar agenda:", err);
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger small py-3">Error al cargar la agenda de hoy.</td></tr>`;
+            }
+        }
+
+        async function cargarHistorialReciente() {
+            const tbody = document.getElementById('historialSesionesBody');
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4"><div class="spinner-border spinner-border-sm text-secondary"></div> Cargando historial...</td></tr>';
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+
+                const { data, error } = await spb.from('sesiones')
+                    .select(`id, fecha, paciente_id, pacientes ( nombre )`)
+                    .eq('profesional_id', session.user.id)
+                    .order('fecha', { ascending: false })
+                    .limit(5);
+
+                if (error) throw error;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `
+                        <tr id="historial-empty-state">
+                            <td colspan="3" class="text-center py-5 text-muted small">
+                                <i class="bi bi-inboxes fs-2 d-block mb-2 opacity-50"></i>
+                                El historial de sesiones está vacío.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    let html = '';
+                    data.forEach(sesion => {
+                        const fechaFormat = new Date(sesion.fecha).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+                        const nombrePaciente = sesion.pacientes ? (Array.isArray(sesion.pacientes) ? sesion.pacientes[0].nombre : sesion.pacientes.nombre) : 'Desconocido';
+                        
+                        html += `
+                            <tr>
+                                <td class="small text-muted">${fechaFormat}</td>
+                                <td class="fw-bold small">${nombrePaciente}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="abrirExpediente('${sesion.paciente_id}')">Ver</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+
+            } catch (err) {
+                console.error("Error al cargar historial:", err);
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-danger small py-3">Error al cargar historial reciente.</td></tr>`;
+            }
+        }
+
+        async function cargarProximaSesion() {
+            const container = document.getElementById('proxima-sesion-container');
+            if(!container) return;
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+
+                const todayStart = new Date();
+                todayStart.setHours(0, 0, 0, 0);
+                const todayEnd = new Date();
+                todayEnd.setHours(23, 59, 59, 999);
+
+                const { data, error } = await spb.from('citas')
+                    .select(`id, fecha_hora, paciente_id, modalidad, pacientes ( nombre )`)
+                    .eq('profesional_id', session.user.id)
+                    .eq('estado', 'programada')
+                    .gte('fecha_hora', todayStart.toISOString())
+                    .lte('fecha_hora', todayEnd.toISOString())
+                    .order('fecha_hora', { ascending: true })
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    const cita = data[0];
+                    const fechaCita = new Date(cita.fecha_hora);
+                    const horaFormat = fechaCita.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    const hoyStr = new Date().toLocaleDateString();
+                    const citaStr = fechaCita.toLocaleDateString();
+                    
+                    let diaTexto = citaStr === hoyStr ? 'Hoy' : fechaCita.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+                    
+                    const nombrePaciente = cita.pacientes ? (Array.isArray(cita.pacientes) ? cita.pacientes[0].nombre : cita.pacientes.nombre) : 'Desconocido';
+
+                    container.innerHTML = `
+                        <div class="fw-bold fs-5 text-truncate" title="${nombrePaciente}">${nombrePaciente}</div>
+                        <div class="small text-white-50 mb-3 text-capitalize">${diaTexto} a las ${horaFormat} • ${cita.modalidad}</div>
+                        <button class="btn btn-warning btn-sm w-100 fw-bold text-dark" onclick="iniciarSesionProgramada('${cita.paciente_id}', '${cita.modalidad}', '${cita.id}')">
+                            <i class="bi bi-play-circle me-1"></i> Iniciar
+                        </button>
+                    `;
+                } else {
+                    container.innerHTML = `<div class="small text-white-50"><i class="bi bi-check-circle me-1"></i> Agenda completada por hoy.</div>`;
+                }
+            } catch (err) {
+                console.error("Error al cargar próxima sesión:", err);
+                container.innerHTML = `<div class="small text-danger">Error al cargar.</div>`;
+            }
+        }
+
+        function iniciarSesionProgramada(pacienteId, modalidad, citaId) {
+            const select = document.getElementById('selectPacienteSesion');
+            let encontrado = false;
+            
+            Array.from(select.options).forEach(opt => {
+                if(opt.getAttribute('data-cita-id') === citaId) {
+                    opt.selected = true;
+                    encontrado = true;
+                }
+            });
+            
+            if(!encontrado) select.value = pacienteId; 
+            
+            select.dispatchEvent(new Event('change'));
+
+            const selectVia = document.getElementById('sesion-via');
+            if(modalidad === 'presencial') {
+                selectVia.value = 'presencial';
+            } else {
+                selectVia.value = 'meet'; 
+            }
+
+            new bootstrap.Modal(document.getElementById('sesionActivaModal')).show();
+        }
+
+        // ==========================================
+        // 3. LECTURA Y RENDERIZADO DE PACIENTES
+        // ==========================================
+        async function cargarPacientes() {
+            const container = document.getElementById('pacientes-container');
+            container.innerHTML = '<div class="spinner-border text-primary mt-4"></div><p class="text-muted mt-2">Cargando directorio...</p>';
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+
+                const { data, error } = await spb.from('pacientes')
+                    .select('*')
+                    .eq('profesional_id', session.user.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+                
+                pacientesCache = data;
+
+                actualizarDropdownsPacientesBase(); 
+                actualizarDropdownSesionActiva(); 
+
+                renderizarTablaPacientes(pacientesCache);
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('pacientes-container').innerHTML = `<div class="alert alert-danger">Error al cargar pacientes: ${error.message}</div>`;
+            }
+        }
+
+        function renderizarTablaPacientes(data) {
+            const container = document.getElementById('pacientes-container');
+
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <i class="bi bi-people fs-1 text-muted mb-3 d-block"></i>
+                    <p class="text-muted">Aún no tienes pacientes registrados o no hay resultados.</p>
+                    <button class="btn-psico-primary mb-3" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">+ Nuevo Paciente</button>
+                `;
+                container.classList.add('text-center', 'py-5');
+                container.classList.remove('text-start');
+                return;
+            }
+
+            let html = `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold m-0 text-start">Tus Pacientes (${data.length})</h5>
+                    <button class="btn-psico-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">+ Nuevo</button>
+                </div>
+                <div class="table-responsive text-start shadow-sm rounded border">
+                    <table class="table table-hover align-middle m-0 bg-white">
+                        <thead class="small text-muted bg-light">
+                            <tr>
+                                <th class="ps-3 border-0">Nombre</th>
+                                <th class="border-0">Contacto</th>
+                                <th class="border-0">Motivo</th>
+                                <th class="text-end pe-3 border-0">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            data.forEach(p => {
+                html += `
+                    <tr>
+                        <td class="ps-3 fw-bold text-dark">${p.nombre}</td>
+                        <td class="small text-muted"><i class="bi bi-whatsapp text-success me-1"></i> ${p.telefono_whatsapp}</td>
+                        <td class="small text-truncate" style="max-width: 150px;" title="${p.motivo_consulta}">${p.motivo_consulta}</td>
+                        <td class="text-end pe-3">
+                            <button class="btn btn-sm btn-outline-primary py-1 px-2" onclick="abrirExpediente('${p.id}')">
+                                <i class="bi bi-folder2-open"></i> Expediente
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `</tbody></table></div>`;
+            
+            container.innerHTML = html;
+            container.classList.remove('text-center', 'py-5');
+            container.classList.add('text-start');
+        }
+
+        function actualizarDropdownsPacientesBase() {
+            const selectCita = document.getElementById('cita-paciente-select'); 
+            if(selectCita) {
+                selectCita.innerHTML = '<option value="" selected disabled>Seleccionar paciente...</option>';
+                pacientesCache.forEach(p => {
+                    selectCita.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.nombre}</option>`);
+                });
+            }
+        }
+
+        function actualizarDropdownSesionActiva() {
+            const selectSesion = document.getElementById('selectPacienteSesion');
+            if(!selectSesion) return;
+
+            let html = '<option value="" selected disabled>Seleccionar cita o paciente...</option>';
+
+            const citasPendientes = citasHoyCache.filter(c => c.estado === 'programada');
+            if (citasPendientes.length > 0) {
+                html += '<optgroup label="Citas Programadas para Hoy">';
+                citasPendientes.forEach(cita => {
+                    const hora = new Date(cita.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                    const nombre = cita.pacientes ? (Array.isArray(cita.pacientes) ? cita.pacientes[0].nombre : cita.pacientes.nombre) : 'Desconocido';
+                    html += `<option value="${cita.paciente_id}" data-cita-id="${cita.id}">🕒 ${hora} - ${nombre}</option>`;
+                });
+                html += '</optgroup>';
+            }
+
+            if (pacientesCache.length > 0) {
+                html += '<optgroup label="Directorio (Sesión sin cita)">';
+                pacientesCache.forEach(p => {
+                    html += `<option value="${p.id}">👤 ${p.nombre}</option>`;
+                });
+                html += '</optgroup>';
+            }
+
+            selectSesion.innerHTML = html;
+        }
+
+        // ==========================================
+        // 4. REGISTRO DE PACIENTES Y CAMPOS DINÁMICOS
+        // ==========================================
+        
+        function abrirModalPaciente(paciente = null) {
+            const form = document.getElementById('formNuevoPaciente');
+            form.reset();
+            document.getElementById('customFieldsContainer').innerHTML = ''; 
+            
+            if (paciente) {
+                editandoPacienteId = paciente.id;
+                document.getElementById('nuevoPacienteModalLabel').innerText = "Editar Expediente: " + paciente.nombre;
+                document.getElementById('btnGuardarPaciente').innerText = "Guardar Cambios";
+                
+                document.getElementById('pac-nombre').value = paciente.nombre;
+                document.getElementById('pac-fecha-nac').value = paciente.fecha_nacimiento;
+                document.getElementById('pac-genero').value = paciente.genero;
+                document.getElementById('pac-estado-civil').value = paciente.estado_civil;
+                document.getElementById('pac-ocupacion').value = paciente.ocupacion;
+                document.getElementById('pac-telefono').value = paciente.telefono_whatsapp;
+                document.getElementById('pac-email').value = paciente.email || '';
+                document.getElementById('pac-domicilio').value = paciente.domicilio || '';
+                document.getElementById('pac-contacto-emergencia').value = paciente.contacto_emergencia_nombre;
+                document.getElementById('pac-tel-emergencia').value = paciente.contacto_emergencia_tel;
+                document.getElementById('pac-motivo').value = paciente.motivo_consulta;
+                document.getElementById('pac-terapia-previa').checked = paciente.terapia_previa;
+
+                const notasOriginales = paciente.notas_alergias_meds || '';
+                if (notasOriginales.includes('[Datos Adicionales]:')) {
+                    const partes = notasOriginales.split('[Datos Adicionales]:');
+                    document.getElementById('pac-alergias').value = partes[0].trim();
+                } else {
+                    document.getElementById('pac-alergias').value = notasOriginales;
+                }
+            } else {
+                editandoPacienteId = null;
+                document.getElementById('nuevoPacienteModalLabel').innerText = "Registrar Nuevo Paciente";
+                document.getElementById('btnGuardarPaciente').innerText = "Guardar Paciente";
+            }
+        }
+
+        function addCustomField() {
+            const container = document.getElementById('customFieldsContainer');
+            const fieldId = Date.now();
+            const fieldHTML = `
+                <div class="col-md-12 d-flex gap-2 mb-2 custom-field-row" id="field-${fieldId}">
+                    <input type="text" class="form-control form-control-sm w-25 field-key" placeholder="Ej. Tipo de Sangre">
+                    <input type="text" class="form-control form-control-sm field-value" placeholder="Valor">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="document.getElementById('field-${fieldId}').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', fieldHTML);
+        }
+
+        async function guardarNuevoPaciente() { 
+            const btn = document.getElementById('btnGuardarPaciente');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+            btn.disabled = true;
+
+            try {
+                const { data: { session }, error: sessionError } = await spb.auth.getSession();
+                if (sessionError || !session) throw new Error("No hay sesión activa");
+
+                let camposExtraTexto = "";
+                document.querySelectorAll('.custom-field-row').forEach(row => {
+                    const key = row.querySelector('.field-key').value.trim();
+                    const val = row.querySelector('.field-value').value.trim();
+                    if(key && val) {
+                        camposExtraTexto += `\n- ${key}: ${val}`;
+                    }
+                });
+
+                let notasFinales = document.getElementById('pac-alergias').value.trim();
+                if(camposExtraTexto !== "") {
+                    notasFinales += `\n\n[Datos Adicionales]:${camposExtraTexto}`;
+                }
+
+                const payload = {
+                    profesional_id: session.user.id,
+                    nombre: document.getElementById('pac-nombre').value,
+                    fecha_nacimiento: document.getElementById('pac-fecha-nac').value,
+                    genero: document.getElementById('pac-genero').value,
+                    estado_civil: document.getElementById('pac-estado-civil').value,
+                    ocupacion: document.getElementById('pac-ocupacion').value,
+                    telefono_whatsapp: document.getElementById('pac-telefono').value,
+                    email: document.getElementById('pac-email').value || null,
+                    domicilio: document.getElementById('pac-domicilio').value || null,
+                    contacto_emergencia_nombre: document.getElementById('pac-contacto-emergencia').value,
+                    contacto_emergencia_tel: document.getElementById('pac-tel-emergencia').value,
+                    motivo_consulta: document.getElementById('pac-motivo').value,
+                    terapia_previa: document.getElementById('pac-terapia-previa').checked,
+                    notas_alergias_meds: notasFinales || null
+                };
+
+                let error;
+                if (editandoPacienteId) {
+                    const resp = await spb.from('pacientes').update(payload).eq('id', editandoPacienteId);
+                    error = resp.error;
+                } else {
+                    const resp = await spb.from('pacientes').insert([payload]);
+                    error = resp.error;
+                }
+
+                if (error) throw error;
+
+                alert(editandoPacienteId ? "¡Expediente actualizado exitosamente!" : "¡Expediente de paciente creado exitosamente!");
+                
+                bootstrap.Modal.getInstance(document.getElementById('nuevoPacienteModal')).hide(); 
+                if (editandoPacienteId) {
+                    bootstrap.Modal.getInstance(document.getElementById('expedienteModal')).hide(); 
+                }
+                
+                document.getElementById('formNuevoPaciente').reset();
+                document.getElementById('customFieldsContainer').innerHTML = ''; 
+                
+                cargarPacientes();
+                
+            } catch (error) {
+                alert("Error al guardar: " + error.message);
+                console.error(error);
+            } finally {
+                btn.innerHTML = editandoPacienteId ? 'Guardar Cambios' : 'Guardar Paciente';
+                btn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // 5. LÓGICA DE LA IA (LucIA)
+        // ==========================================
+        async function enviarMensajeIA() { 
+            const input = document.getElementById('ia-prompt-input');
+            const prompt = input.value.trim();
+            if (!prompt) return;
+
+            const container = document.getElementById('chat-ia-container');
+            const btn = document.getElementById('btn-enviar-ia');
+
+            input.disabled = true;
+            btn.disabled = true;
+            
+            container.insertAdjacentHTML('beforeend', `
+                <div class="text-end mb-2 ps-4">
+                    <div class="d-inline-block bg-primary text-white p-2 rounded small text-start shadow-sm">
+                        ${prompt}
+                    </div>
+                </div>
+            `);
+            input.value = '';
+            container.scrollTop = container.scrollHeight;
+
+            const loadingId = 'loading-' + Date.now();
+            container.insertAdjacentHTML('beforeend', `
+                <div class="text-start mb-2 pe-4" id="${loadingId}">
+                    <div class="d-inline-block bg-white border p-2 rounded small text-muted">
+                        <em><i class="bi bi-robot text-primary me-1"></i> Pensando... <span class="spinner-grow spinner-grow-sm ms-1" style="width: 0.8rem; height: 0.8rem;"></span></em>
+                    </div>
+                </div>
+            `);
+            container.scrollTop = container.scrollHeight;
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) throw new Error("No hay sesión activa");
+
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}` 
+                    },
+                    body: JSON.stringify({ mensaje: prompt })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove();
+
+                if (data.status === 'success') {
+                    container.insertAdjacentHTML('beforeend', `
+                        <div class="text-start mb-2 pe-4">
+                            <div class="d-inline-block bg-white border p-2 rounded small text-dark shadow-sm">
+                                <i class="bi bi-robot text-primary me-1"></i> ${data.respuesta.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `);
+                } else {
+                    throw new Error(data.detail || "Error desconocido en el servidor");
+                }
+            } catch (error) {
+                const loadingEl = document.getElementById(loadingId);
+                if(loadingEl) loadingEl.remove();
+
+                container.insertAdjacentHTML('beforeend', `
+                    <div class="text-start mb-2 pe-4">
+                        <div class="d-inline-block bg-danger-subtle text-danger border border-danger-subtle p-2 rounded small">
+                            <i class="bi bi-exclamation-triangle me-1"></i> Error: ${error.message || "No me pude conectar con el servidor."}
+                        </div>
+                    </div>
+                `);
+                console.error(error);
+            }
+
+            input.disabled = false;
+            btn.disabled = false;
+            input.focus();
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ==========================================
+        // 6. AGENDA DE CITAS Y DESCARGA MANUAL (.ICS)
+        // ==========================================
+        async function guardarNuevaCita() {
+            const btn = document.querySelector('#formNuevaCita button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+            btn.disabled = true;
+
+            try {
+                const { data: { session }, error: sessionError } = await spb.auth.getSession();
+                if (sessionError || !session) throw new Error("No hay sesión activa");
+
+                const selectEl = document.getElementById('cita-paciente-select');
+                const pacienteId = selectEl.value;
+                const nombrePaciente = selectEl.options[selectEl.selectedIndex].text;
+                
+                const fecha = document.getElementById('cita-fecha').value;
+                const hora = document.getElementById('cita-hora').value;
+                const tipo = document.getElementById('cita-tipo').value;
+                const modalidad = document.querySelector('input[name="modalidadRadio"]:checked').value;
+                const notas = document.getElementById('cita-notas').value || '';
+                const wantsSync = document.getElementById('syncCitaCalendario').checked;
+                
+                if (!pacienteId) throw new Error("Debes seleccionar un paciente");
+
+                const fechaHoraFusionada = new Date(`${fecha}T${hora}`).toISOString();
+
+                const payload = {
+                    profesional_id: session.user.id,
+                    paciente_id: pacienteId,
+                    fecha_hora: fechaHoraFusionada,
+                    tipo_consulta: tipo,
+                    modalidad: modalidad,
+                    notas_previas: notas || null,
+                    sync_google: wantsSync
+                };
+
+                const { error } = await spb.from('citas').insert([payload]);
+                if (error) throw error;
+
+                alert("¡Cita agendada exitosamente en la base de datos!");
+                
+                // MÓDULO DE DESCARGA MANUAL .ICS (SI EL DOCTOR QUIERE)
+                if (wantsSync) {
+                    const dInicio = new Date(`${fecha}T${hora}`);
+                    const dFin = new Date(dInicio.getTime() + 60 * 60000); // Asume duración 1 hora
+                    const titulo = `Psicogestor: Sesión con ${nombrePaciente}`;
+                    const descripcion = `Tipo: ${tipo}\nModalidad: ${modalidad}\nNotas pre-sesión: ${notas || 'Ninguna'}`;
+
+                    descargarICS(titulo, descripcion, dInicio, dFin);
+                }
+
+                bootstrap.Modal.getInstance(document.getElementById('nuevaCitaModal')).hide();
+                document.getElementById('formNuevaCita').reset();
+                
+                cargarAgendaHoy();
+                cargarProximaSesion();
+
+            } catch (error) {
+                alert("Error al agendar cita: " + error.message);
+                console.error(error);
+            } finally {
+                btn.innerHTML = 'Guardar Cita';
+                btn.disabled = false;
+            }
+        }
+        
+        function descargarICS(titulo, descripcion, fechaInicio, fechaFin) {
+            const formatDt = (d) => d.toISOString().replace(/-|:|\.\d+/g, "");
+            const icsContent = [
+                "BEGIN:VCALENDAR",
+                "VERSION:2.0",
+                "PRODID:-//Dev Group Studio//Psicogestor 2.0//ES",
+                "BEGIN:VEVENT",
+                `DTSTART:${formatDt(fechaInicio)}`,
+                `DTEND:${formatDt(fechaFin)}`,
+                `SUMMARY:${titulo}`,
+                `DESCRIPTION:${descripcion.replace(/\n/g, '\\n')}`,
+                "END:VEVENT",
+                "END:VCALENDAR"
+            ].join('\n');
+
+            const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = window.URL.createObjectURL(blob);
+            link.setAttribute('download', `Cita_${titulo.replace(/ /g, '_')}.ics`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // ==========================================
+        // 7. SESIONES SOAP Y EXPEDIENTE
+        // ==========================================
+        
+        function actualizarBotonSesion() {
+            const btn = document.getElementById('btn-iniciar-sesion-rapida');
+            if (btn) {
+                if (localStorage.getItem('psicogestor_borrador')) {
+                    btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Reanudar Sesión';
+                    btn.classList.add('btn-warning', 'text-dark');
+                    btn.classList.remove('btn-psico-primary');
+                } else {
+                    btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Iniciar Sesión Rápida';
+                    btn.classList.add('btn-psico-primary');
+                    btn.classList.remove('btn-warning', 'text-dark');
+                }
+            }
+        }
+
+        function pausarSesion() {
+            const select = document.getElementById('selectPacienteSesion');
+            const pacienteId = select.value;
+            const selectedOpt = select.options[select.selectedIndex];
+            const citaId = selectedOpt ? selectedOpt.getAttribute('data-cita-id') : null;
+
+            if (!pacienteId) {
+                alert("⚠️ Selecciona un paciente antes de pausar la sesión.");
+                return;
+            }
+
+            const borrador = {
+                paciente_id: pacienteId,
+                cita_id: citaId,
+                via: document.getElementById('sesion-via').value,
+                s: document.getElementById('soap-s').value,
+                o: document.getElementById('soap-o').value,
+                a: document.getElementById('soap-a').value,
+                p: document.getElementById('soap-p').value
+            };
+
+            localStorage.setItem('psicogestor_borrador', JSON.stringify(borrador));
+            isPausando = true; 
+            
+            bootstrap.Modal.getInstance(document.getElementById('sesionActivaModal')).hide();
+            actualizarBotonSesion(); 
+            alert("⏸️ Sesión pausada. Tu información está guardada en la memoria del navegador.");
+        }
+
+        document.getElementById('sesionActivaModal').addEventListener('show.bs.modal', function () {
+            const borradorGuardado = localStorage.getItem('psicogestor_borrador');
+            if (borradorGuardado) {
+                const borrador = JSON.parse(borradorGuardado);
+                
+                const select = document.getElementById('selectPacienteSesion');
+                
+                if (borrador.cita_id) {
+                    Array.from(select.options).forEach(opt => {
+                        if(opt.getAttribute('data-cita-id') === borrador.cita_id) opt.selected = true;
+                    });
+                } else {
+                    select.value = borrador.paciente_id;
+                }
+
+                document.getElementById('sesion-via').value = borrador.via;
+                document.getElementById('soap-s').value = borrador.s;
+                document.getElementById('soap-o').value = borrador.o;
+                document.getElementById('soap-a').value = borrador.a;
+                document.getElementById('soap-p').value = borrador.p;
+
+                document.getElementById('selectPacienteSesion').dispatchEvent(new Event('change'));
+            }
+        });
+
+        document.getElementById('selectPacienteSesion').addEventListener('change', async function(e) {
+            const pacienteId = e.target.value;
+            const ctxContainer = document.getElementById('sesion-contexto-ia');
+            const iaContainer = document.getElementById('sesion-sugerencia-ia');
+
+            if (!pacienteId) {
+                ctxContainer.innerHTML = '<em>Selecciona un paciente para ver su historial.</em>';
+                iaContainer.innerHTML = '<i class="bi bi-magic me-1"></i> <strong>Sugerencia LucIA:</strong> Esperando datos de la sesión para generar sugerencias...';
+                iaContainer.className = 'alert alert-secondary p-2 small mb-0 text-muted border-0';
+                return;
+            }
+
+            ctxContainer.innerHTML = '<div class="spinner-border spinner-border-sm text-primary"></div> Cargando contexto...';
+            iaContainer.innerHTML = '<i class="bi bi-magic me-1"></i> <strong>Sugerencia LucIA:</strong> Analizando historial...';
+
+            try {
+                const { data: sesiones, error } = await spb.from('sesiones')
+                    .select('*')
+                    .eq('paciente_id', pacienteId)
+                    .order('fecha', { ascending: false })
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (sesiones && sesiones.length > 0) {
+                    const ultima = sesiones[0];
+                    const fechaFormat = new Date(ultima.fecha).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
+                    
+                    ctxContainer.innerHTML = `
+                        <strong>Última sesión (${fechaFormat}):</strong><br>
+                        <span class="text-dark"><strong>Plan:</strong></span> ${ultima.plan || 'Sin plan registrado.'}<br>
+                        <span class="text-dark"><strong>Análisis:</strong></span> ${ultima.analisis || 'Sin análisis registrado.'}
+                    `;
+                    
+                    iaContainer.innerHTML = `<i class="bi bi-magic me-1"></i> <strong>Sugerencia LucIA:</strong> Te sugiero revisar el cumplimiento del plan anterior antes de iniciar con nuevos temas.`;
+                    iaContainer.className = 'alert alert-primary p-2 small mb-0 text-dark border-0';
+                } else {
+                    ctxContainer.innerHTML = '<em>Paciente sin sesiones previas. Es su primera cita.</em>';
+                    
+                    iaContainer.innerHTML = `<i class="bi bi-magic me-1"></i> <strong>Sugerencia LucIA:</strong> Al ser primera sesión, enfócate en la historia clínica (NOM-004) y establecer rapport.`;
+                    iaContainer.className = 'alert alert-success p-2 small mb-0 text-dark border-0';
+                }
+            } catch (err) {
+                console.error(err);
+                ctxContainer.innerHTML = '<span class="text-danger">Error al cargar contexto.</span>';
+                iaContainer.innerHTML = '<i class="bi bi-magic me-1"></i> <strong>LucIA:</strong> Hubo un problema de conexión al buscar el historial.';
+            }
+        });
+        
+        async function finalizarSesionSOAP() {
+            const select = document.getElementById('selectPacienteSesion');
+            const pId = select.value;
+            if(!pId) { alert("Selecciona paciente primero."); return; }
+
+            const btn = document.querySelector('#formNotasSOAP button[type="submit"]');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+            btn.disabled = true;
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) throw new Error("Sin sesión activa");
+
+                const payload = {
+                    profesional_id: session.user.id,
+                    paciente_id: pId,
+                    via: document.getElementById('sesion-via').value,
+                    subjetivo: document.getElementById('soap-s').value,
+                    objetivo: document.getElementById('soap-o').value,
+                    analisis: document.getElementById('soap-a').value,
+                    plan: document.getElementById('soap-p').value
+                };
+
+                const { error } = await spb.from('sesiones').insert([payload]);
+                if (error) throw error;
+
+                alert("¡Notas clínicas guardadas con éxito!");
+                
+                const selectedOpt = select.options[select.selectedIndex];
+                const citaId = selectedOpt ? selectedOpt.getAttribute('data-cita-id') : null;
+
+                if (citaId) {
+                    await spb.from('citas').update({ estado: 'completada' }).eq('id', citaId);
+                }
+
+                localStorage.removeItem('psicogestor_borrador');
+                actualizarBotonSesion(); 
+
+                bootstrap.Modal.getInstance(document.getElementById('sesionActivaModal')).hide();
+                document.getElementById('formNotasSOAP').reset();
+
+                cargarHistorialReciente();
+                cargarAgendaHoy();
+                cargarProximaSesion();
+
+            } catch(error) {
+                alert("Error al guardar sesión: " + error.message);
+                console.error(error);
+            } finally {
+                btn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Finalizar y Analizar con IA';
+                btn.disabled = false;
+            }
+        }
+
+        async function borrarSesion(sesionId, pacienteId) {
+            if (!confirm("¿Estás seguro de borrar esta nota clínica permanentemente?")) return;
+
+            try {
+                const { error } = await spb.from('sesiones').delete().eq('id', sesionId);
+                if (error) throw error;
+                
+                abrirExpediente(pacienteId);
+                cargarHistorialReciente();
+            } catch (err) {
+                alert("Error al borrar: " + err.message);
+                console.error(err);
+            }
+        }
+
+        async function abrirExpediente(pacienteId) {
+            const paciente = pacientesCache.find(p => p.id === pacienteId);
+            
+            if(!paciente) {
+                alert("No se encontró la información del paciente en la memoria.");
+                return;
+            }
+
+            let edadText = "Edad no especificada";
+            if(paciente.fecha_nacimiento) {
+                const birthDate = new Date(paciente.fecha_nacimiento);
+                const today = new Date();
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                    age--;
+                }
+                edadText = `${age} años`;
+            }
+
+            document.getElementById('exp-nombre').innerText = paciente.nombre;
+            document.getElementById('exp-edad').innerText = `${edadText} • ${paciente.genero || 'N/A'}`;
+            document.getElementById('exp-tel').innerText = paciente.telefono_whatsapp || 'N/A';
+            document.getElementById('exp-email').innerText = paciente.email || 'No registrado';
+            document.getElementById('exp-domicilio').innerText = paciente.domicilio || 'No registrado';
+            document.getElementById('exp-emergencia-nombre').innerText = paciente.contacto_emergencia_nombre || 'N/A';
+            document.getElementById('exp-emergencia-tel').innerText = paciente.contacto_emergencia_tel || 'N/A';
+            document.getElementById('exp-motivo').innerText = paciente.motivo_consulta || 'Sin motivo registrado';
+            
+            document.getElementById('exp-notas-extra').innerText = paciente.notas_alergias_meds || 'Sin notas adicionales';
+            document.getElementById('expediente-paciente-nombre').innerText = `Expediente de: ${paciente.nombre}`;
+
+            document.getElementById('btnEditarExpediente').onclick = () => {
+                bootstrap.Modal.getInstance(document.getElementById('expedienteModal')).hide();
+                abrirModalPaciente(paciente);
+                new bootstrap.Modal(document.getElementById('nuevoPacienteModal')).show();
+            };
+
+            const modalElement = document.getElementById('expedienteModal');
+            if (!modalElement.classList.contains('show')) {
+                bootstrap.Modal.getOrCreateInstance(modalElement).show();
+            }
+
+            const timelineContainer = document.getElementById('expediente-timeline-data');
+            const iaContainer = document.getElementById('expediente-ia-data');
+            const kpiContainer = document.getElementById('expediente-kpis-data');
+
+            timelineContainer.innerHTML = '<div class="spinner-border text-primary mt-4"></div><p class="text-muted mt-2">Cargando historial clínico...</p>';
+            timelineContainer.classList.add('text-center');
+            timelineContainer.classList.remove('text-start');
+
+            try {
+                const { data: sesiones, error } = await spb.from('sesiones')
+                    .select('*')
+                    .eq('paciente_id', pacienteId)
+                    .order('fecha', { ascending: false });
+
+                if (error) throw error;
+
+                if (sesiones.length === 0) {
+                    timelineContainer.innerHTML = `
+                        <i class="bi bi-clock-history fs-1 text-muted opacity-50 mb-3 d-block"></i>
+                        <h6 class="fw-bold text-muted">Aún no hay notas en este expediente</h6>
+                        <p class="text-muted small mb-0">Cuando finalices una sesión, las notas SOAP se irán apilando aquí cronológicamente.</p>
+                    `;
+                    iaContainer.innerHTML = '<i class="bi bi-bar-chart-steps fs-3 d-block mb-2"></i> LucIA necesita al menos 1 sesión registrada para generar un análisis.';
+                    kpiContainer.innerHTML = 'Sin datos de progreso clínico.';
+                } else {
+                    let timelineHTML = '<div class="timeline text-start">';
+                    sesiones.forEach(sesion => {
+                        const fechaFormat = new Date(sesion.fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                        timelineHTML += `
+                            <div class="card-psico border-start border-primary border-4 mb-3 p-3 bg-white shadow-sm position-relative">
+                                <button class="btn btn-sm btn-link text-danger position-absolute top-0 end-0 mt-2 me-2" onclick="borrarSesion('${sesion.id}', '${pacienteId}')" title="Borrar Nota">
+                                    <i class="bi bi-trash fs-5"></i>
+                                </button>
+                                
+                                <div class="d-flex justify-content-between align-items-center mb-2 me-4">
+                                    <span class="badge bg-light text-dark border"><i class="bi bi-calendar-event me-1"></i> ${fechaFormat}</span>
+                                    <span class="badge bg-primary-subtle text-primary"><i class="bi bi-camera-video me-1"></i> ${sesion.via || 'N/A'}</span>
+                                </div>
+                                <div class="row g-3 small mt-1">
+                                    <div class="col-md-6">
+                                        <strong class="text-primary">S (Subjetivo):</strong>
+                                        <p class="text-muted mb-0">${sesion.subjetivo || '-'}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong class="text-primary">O (Objetivo):</strong>
+                                        <p class="text-muted mb-0">${sesion.objetivo || '-'}</p>
+                                    </div>
+                                    <div class="col-md-12 border-top pt-2 mt-2">
+                                        <strong class="text-primary">A (Análisis):</strong>
+                                        <p class="text-muted mb-0">${sesion.analisis || '-'}</p>
+                                    </div>
+                                    <div class="col-md-12 border-top pt-2 mt-2">
+                                        <strong class="text-primary">P (Plan):</strong>
+                                        <p class="text-muted mb-0">${sesion.plan || '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    timelineHTML += '</div>';
+                    timelineContainer.innerHTML = timelineHTML;
+                    timelineContainer.classList.remove('text-center', 'p-5');
+                    timelineContainer.classList.add('text-start', 'p-0');
+
+                    iaContainer.innerHTML = `
+                        <div class="text-start small">
+                            <i class="bi bi-robot text-primary me-1"></i> <strong>Análisis LucIA:</strong><br>
+                            Se detectan <strong>${sesiones.length}</strong> sesiones en el historial. El paciente mantiene apego al tratamiento.
+                        </div>
+                    `;
+
+                    kpiContainer.innerHTML = `
+                        <div class="d-flex justify-content-between mb-1 small">
+                            <span class="text-muted">Apego al tratamiento:</span>
+                            <span class="text-success fw-bold">Alto</span>
+                        </div>
+                        <div class="progress mb-3" style="height: 6px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: 85%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1 small">
+                            <span class="text-muted">Total Sesiones:</span>
+                            <span class="text-primary fw-bold">${sesiones.length}</span>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error(err);
+                timelineContainer.innerHTML = `<div class="alert alert-danger small">Error al cargar historial: ${err.message}</div>`;
+            }
+        }
+
+        // ==========================================
+        // 8. FUNCIONES SECUNDARIAS
+        // ==========================================
+        function switchView(viewName) {
+            document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            document.getElementById('view-' + viewName).classList.add('active');
+            document.getElementById('link-' + viewName).classList.add('active');
+        }
+
+        async function guardarFinanza() { 
+            const btn = document.querySelector('#formRegistroFinanzas button[type="submit"]');
+            btn.innerHTML = 'Guardando...';
+            btn.disabled = true;
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) throw new Error("Sin sesión activa");
+
+                const payload = {
+                    profesional_id: session.user.id,
+                    tipo: document.getElementById('fin-tipo').value,
+                    concepto: document.getElementById('fin-concepto').value.trim(),
+                    monto: document.getElementById('fin-monto').value,
+                    fecha: document.getElementById('fin-fecha').value,
+                    metodo: document.getElementById('fin-metodo').value,
+                    estado: document.getElementById('fin-estado').value
+                };
+
+                const { error } = await spb.from('finanzas').insert([payload]);
+                if (error) throw error;
+
+                alert("✅ Movimiento financiero registrado.");
+                bootstrap.Modal.getInstance(document.getElementById('registroFinanzasModal')).hide(); 
+                document.getElementById('formRegistroFinanzas').reset();
+                
+                cargarFinanzas(); 
+
+            } catch (error) {
+                alert("Error al guardar el movimiento: " + error.message);
+                console.error(error);
+            } finally {
+                btn.innerHTML = 'Guardar Movimiento';
+                btn.disabled = false;
+            }
+        }
+
+        async function cargarFinanzas() {
+            const tbody = document.getElementById('finanzasBody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Cargando datos...</td></tr>';
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+
+                const { data, error } = await spb.from('finanzas')
+                    .select('*')
+                    .eq('profesional_id', session.user.id)
+                    .order('fecha', { ascending: false });
+
+                if (error) throw error;
+
+                let totalIngresos = 0;
+                let totalGastos = 0;
+                let totalPorCobrar = 0;
+
+                const fechaHoy = new Date();
+                const mesActual = fechaHoy.getMonth();
+                const anioActual = fechaHoy.getFullYear();
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `
+                        <tr id="finanzas-empty-state">
+                            <td colspan="5" class="text-center text-muted py-5">
+                                <i class="bi bi-receipt fs-2 d-block mb-2"></i>
+                                No hay movimientos financieros registrados.
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    let html = '';
+                    data.forEach(f => {
+                        const fechaFinanza = new Date(f.fecha);
+                        if (fechaFinanza.getMonth() === mesActual && fechaFinanza.getFullYear() === anioActual) {
+                            if (f.tipo === 'ingreso' && f.estado === 'pagado') totalIngresos += parseFloat(f.monto);
+                            if (f.tipo === 'egreso' && f.estado === 'pagado') totalGastos += parseFloat(f.monto);
+                            if (f.tipo === 'ingreso' && f.estado === 'pendiente') totalPorCobrar += parseFloat(f.monto);
+                        }
+
+                        const isIngreso = f.tipo === 'ingreso';
+                        const colorBadge = isIngreso ? 'text-success' : 'text-danger';
+                        const iconType = isIngreso ? 'bi-arrow-down-left-circle' : 'bi-arrow-up-right-circle';
+                        const estadoBadge = f.estado === 'pagado' ? 'bg-success-subtle text-success border-success-subtle' : 'bg-warning-subtle text-warning border-warning-subtle';
+
+                        html += `
+                            <tr>
+                                <td class="small text-muted">${fechaFinanza.toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}</td>
+                                <td class="fw-bold small"><i class="bi ${iconType} ${colorBadge} me-1"></i> ${f.concepto}</td>
+                                <td class="small text-capitalize">${f.metodo}</td>
+                                <td class="fw-bold ${colorBadge}">$${parseFloat(f.monto).toFixed(2)}</td>
+                                <td><span class="badge ${estadoBadge} border text-capitalize">${f.estado}</span></td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+
+                document.getElementById('kpi-ingresos').innerText = `$${totalIngresos.toFixed(2)}`;
+                document.getElementById('kpi-gastos').innerText = `$${totalGastos.toFixed(2)}`;
+                document.getElementById('kpi-por-cobrar').innerText = `$${totalPorCobrar.toFixed(2)}`;
+
+            } catch (err) {
+                console.error("Error al cargar finanzas:", err);
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger small py-3">Error al cargar el historial financiero.</td></tr>`;
+            }
+        }
+
+        function validarYAccionar(accion) {
+            const selectPaciente = document.getElementById('selectPacienteSesion');
+            const pId = selectPaciente.value;
+            
+            if (!pId) {
+                alert("⚠️ Error: Debes asignar un paciente primero.");
+                selectPaciente.focus();
+                return;
+            }
+
+            const paciente = pacientesCache.find(p => p.id === pId);
+            const via = document.getElementById('sesion-via').value;
+            let link = "";
+            let mensaje = "";
+
+            if (via === 'meet') {
+                link = configProfesional.link_meet || 'Aún no configuras tu link de Meet';
+                mensaje = `Hola ${paciente.nombre}, te comparto el enlace para nuestra sesión de hoy por Google Meet: ${link}`;
+            } else if (via === 'zoom') {
+                link = configProfesional.link_zoom || 'Aún no configuras tu link de Zoom';
+                mensaje = `Hola ${paciente.nombre}, te comparto el enlace para nuestra sesión de hoy por Zoom: ${link}`;
+            } else if (via === 'face') {
+                link = configProfesional.usuario_facetime || 'Aún no configuras tu usuario de FaceTime';
+                mensaje = `Hola ${paciente.nombre}, a la hora de nuestra cita te estaré marcando por FaceTime a través de mi cuenta: ${link}`;
+            } else if (via === 'presencial') {
+                link = "Sesión Presencial en el Consultorio";
+                mensaje = `Hola ${paciente.nombre}, te recuerdo que nuestra sesión de hoy es presencial en el consultorio. ¡Nos vemos pronto!`;
+            }
+
+            if (accion === 'generar') {
+                navigator.clipboard.writeText(link).then(() => {
+                    alert("✨ Enlace copiado al portapapeles:\n" + link);
+                }).catch(err => {
+                    alert("Error al copiar: " + err);
+                });
+            } else if (accion === 'enviar') {
+                if (!paciente.telefono_whatsapp) {
+                    alert("⚠️ Este paciente no tiene un número de teléfono registrado.");
+                    return;
+                }
+                
+                let telefono = paciente.telefono_whatsapp.replace(/\D/g, '');
+                if (telefono.length === 10) {
+                    telefono = "52" + telefono; 
+                }
+                
+                const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+                window.open(url, '_blank'); 
+            }
+        }
+
+        async function guardarLinksVirtuales() {
+            const btn = document.querySelector('#view-configuracion button[type="submit"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Guardando...';
+            btn.disabled = true;
+            
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) throw new Error("Sin sesión activa");
+
+                const payload = {
+                    link_meet: document.getElementById('cfg-meet').value.trim(),
+                    link_zoom: document.getElementById('cfg-zoom').value.trim(),
+                    usuario_facetime: document.getElementById('cfg-face').value.trim()
+                };
+
+                const { error } = await spb.from('perfiles_profesionales')
+                    .update(payload)
+                    .eq('id', session.user.id);
+                
+                if (error) throw error;
+                
+                configProfesional = payload; 
+                alert("✅ Enlaces de atención virtual actualizados correctamente.");
+            } catch (err) {
+                alert("Error al guardar enlaces: " + err.message);
+                console.error(err);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // ==========================================
+        // 9. FUNCIÓN PARA COPIAR ENLACE WEBCAL
+        // ==========================================
+        function copiarLinkCalendario() {
+            const urlInput = document.getElementById('url-calendario-suscripcion');
+            urlInput.select();
+            urlInput.setSelectionRange(0, 99999); // Soporte para móviles
+            
+            navigator.clipboard.writeText(urlInput.value).then(() => {
+                alert("¡Enlace de suscripción copiado al portapapeles!\n\nSigue las instrucciones que aparecen debajo para agregarlo a tu Apple Calendar o Google Calendar.");
+            }).catch(err => {
+                alert("Error al copiar el enlace: " + err);
+            });
+        }
+
+        // ==========================================
+        // 10. LIMPIEZA DE MODALES Y PAUSA (EFECTO MEMORIA)
+        // ==========================================
+        document.getElementById('sesionActivaModal').addEventListener('hidden.bs.modal', function () {
+            if (isPausando) {
+                isPausando = false; 
+                return; 
+            }
+
+            document.getElementById('formNotasSOAP').reset();
+            document.getElementById('selectPacienteSesion').value = "";
+            document.getElementById('sesion-contexto-ia').innerHTML = '<em>Selecciona un paciente para ver su historial.</em>';
+            
+            const iaContainer = document.getElementById('sesion-sugerencia-ia');
+            if(iaContainer) {
+                iaContainer.innerHTML = '<i class="bi bi-magic me-1"></i> <strong>Sugerencia LucIA:</strong> Esperando datos de la sesión para generar sugerencias...';
+                iaContainer.className = 'alert alert-secondary p-2 small mb-0 text-muted border-0';
+            }
+
+            localStorage.removeItem('psicogestor_borrador');
+            actualizarBotonSesion(); 
+        });
+
+        document.getElementById('nuevoPacienteModal').addEventListener('hidden.bs.modal', function () {
+            document.getElementById('customFieldsContainer').innerHTML = '';
+        });
+
+    </script>
+</body>
+</html>
