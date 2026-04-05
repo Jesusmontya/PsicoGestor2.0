@@ -1,7 +1,5 @@
 fastapi
 uvicorn
-gunicorn
-uvicorn[standard]
 supabase
 google-genai
 python-dotenv
