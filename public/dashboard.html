@@ -33,13 +33,14 @@
             height: 100vh;
         }
 
+        /* --- ESTILOS SIDEBAR --- */
         .sidebar {
             width: 260px;
             background-color: var(--sidebar-bg);
             border-right: 1px solid rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
-            transition: all var(--transition-speed);
+            transition: transform var(--transition-speed);
             z-index: 1000;
         }
 
@@ -99,6 +100,7 @@
             display: flex;
             flex-direction: column;
             overflow-y: auto;
+            transition: margin-left var(--transition-speed);
         }
 
         .top-navbar {
@@ -113,6 +115,61 @@
         .content-container {
             padding: 2rem;
         }
+
+        /* --- MEDIA QUERIES PARA MÓVIL --- */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                height: 100vh;
+                transform: translateX(-100%); /* Oculta la barra hacia la izquierda */
+            }
+            .sidebar.show {
+                transform: translateX(0); /* Muestra la barra */
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            }
+            .main-content {
+                width: 100%;
+            }
+            #globalSearch {
+                display: none; /* Oculta el input en móvil, deja solo la lupa si quieres, o puedes esconder todo */
+            }
+            .search-bar {
+                 width: auto !important;
+            }
+            .content-container {
+                padding: 1rem;
+            }
+            .modal-xl, .modal-lg {
+                max-width: 95%;
+            }
+            #expedienteModal .modal-body.d-flex {
+                flex-direction: column;
+            }
+            #expedienteModal .w-25, #expedienteModal .w-75 {
+                width: 100% !important;
+            }
+            #expedienteModal .w-25 {
+                border-right: none !important;
+                border-bottom: 1px solid #dee2e6;
+            }
+        }
+
+        .btn-menu-mobile {
+            display: none;
+            font-size: 1.5rem;
+            color: var(--text-dark);
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .btn-menu-mobile {
+                display: inline-block;
+            }
+        }
+        /* -------------------------------------- */
 
         .view-section {
             display: none; 
@@ -214,43 +271,46 @@
 
     <div class="app-wrapper">
         
-        <nav class="sidebar">
-            <div class="sidebar-header">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header d-flex justify-content-between align-items-center">
                 <a href="#" class="brand-logo">
                     <i class="bi bi-brain"></i>
                     Psicogestor <span class="fw-light text-muted">2.0</span>
                 </a>
+                <button class="btn btn-link text-dark p-0 btn-menu-mobile" onclick="toggleSidebar()" id="btn-close-sidebar">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             
             <div class="sidebar-menu flex-grow-1">
                 <ul class="nav nav-pills flex-column m-0 mt-3">
                     <li class="nav-item">
-                        <a href="#" class="nav-link active" id="link-inicio" onclick="switchView('inicio')">
+                        <a href="#" class="nav-link active" id="link-inicio" onclick="switchView('inicio'); toggleSidebar(true);">
                             <i class="bi bi-house-door"></i> Inicio
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link" id="link-pacientes" onclick="switchView('pacientes')">
+                        <a href="#" class="nav-link" id="link-pacientes" onclick="switchView('pacientes'); toggleSidebar(true);">
                             <i class="bi bi-person-hearts"></i> Pacientes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link" id="link-sesiones" onclick="switchView('sesiones')">
+                        <a href="#" class="nav-link" id="link-sesiones" onclick="switchView('sesiones'); toggleSidebar(true);">
                             <i class="bi bi-calendar-check"></i> Sesiones
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link" id="link-finanzas" onclick="switchView('finanzas')">
+                        <a href="#" class="nav-link" id="link-finanzas" onclick="switchView('finanzas'); toggleSidebar(true);">
                             <i class="bi bi-cash-stack"></i> Finanzas
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link" id="link-reportes" onclick="switchView('reportes')">
+                        <a href="#" class="nav-link" id="link-reportes" onclick="switchView('reportes'); toggleSidebar(true);">
                             <i class="bi bi-bar-chart-line"></i> Reportes
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a href="#" class="nav-link" id="link-configuracion" onclick="switchView('configuracion')">
+                        <a href="#" class="nav-link" id="link-configuracion" onclick="switchView('configuracion'); toggleSidebar(true);">
                             <i class="bi bi-gear"></i> Configuración
                         </a>
                     </li>
@@ -276,19 +336,26 @@
         <main class="main-content">
             
             <header class="top-navbar">
-                <div class="search-bar w-25">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
-                        <input type="text" class="form-control border-start-0" id="globalSearch" placeholder="Buscar paciente por nombre o teléfono...">
+                <div class="d-flex align-items-center w-50">
+                    <button class="btn-menu-mobile" onclick="toggleSidebar()">
+                        <i class="bi bi-list"></i>
+                    </button>
+
+                    <div class="search-bar w-100">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-white border-end-0 text-muted d-none d-md-flex"><i class="bi bi-search"></i></span>
+                            <input type="text" class="form-control border-start-0" id="globalSearch" placeholder="Buscar paciente...">
+                        </div>
                     </div>
                 </div>
+
                 <div class="top-actions d-flex align-items-center gap-3">
-                    <button class="btn btn-link text-muted p-0"><i class="bi bi-bell fs-5"></i></button>
-                    <button class="btn btn-outline-primary btn-sm fw-bold" style="border-color: var(--psico-primary); color: var(--psico-primary);" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">
+                    <button class="btn btn-link text-muted p-0 d-none d-md-block"><i class="bi bi-bell fs-5"></i></button>
+                    <button class="btn btn-outline-primary btn-sm fw-bold d-none d-md-block" style="border-color: var(--psico-primary); color: var(--psico-primary);" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">
                         <i class="bi bi-person-plus me-1"></i> Nuevo Paciente
                     </button>
                     <button class="btn-psico-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevaCitaModal">
-                        <i class="bi bi-plus-lg me-1"></i> Nueva Cita
+                        <i class="bi bi-plus-lg d-md-none"></i> <span class="d-none d-md-inline"><i class="bi bi-plus-lg me-1"></i> Nueva Cita</span>
                     </button>
                 </div>
             </header>
@@ -299,7 +366,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h1 class="h3 fw-bold m-0" id="welcome-text">¡Hola!</h1>
-                            <p class="text-muted">Tu asistente Psicogestor tiene todo listo para hoy.</p>
+                            <p class="text-muted d-none d-md-block">Tu asistente Psicogestor tiene todo listo para hoy.</p>
                         </div>
                         <div class="badge bg-primary-subtle text-primary p-2 px-3 rounded-pill" id="current-date-display">
                             <i class="bi bi-calendar3"></i> [Fecha de Hoy]
@@ -369,7 +436,7 @@
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h1 class="h3 fw-bold m-0">Panel de Sesiones</h1>
                         <button class="btn-psico-primary" id="btn-iniciar-sesion-rapida" data-bs-toggle="modal" data-bs-target="#sesionActivaModal">
-                            <i class="bi bi-play-circle me-1"></i> Iniciar Sesión Rápida
+                            <i class="bi bi-play-circle me-1"></i> <span class="d-none d-md-inline">Iniciar Sesión Rápida</span>
                         </button>
                     </div>
 
@@ -446,7 +513,7 @@
                         <h1 class="h3 fw-bold m-0">Control Financiero</h1>
                         <div class="d-flex gap-2">
                             <button class="btn-psico-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#registroFinanzasModal">
-                                <i class="bi bi-plus-circle me-1"></i> Registrar Movimiento
+                                <i class="bi bi-plus-circle me-1"></i> <span class="d-none d-md-inline">Registrar Movimiento</span>
                             </button>
                         </div>
                     </div>
@@ -529,9 +596,9 @@
                         <h1 class="h3 fw-bold m-0">Reportes y Analítica IA</h1>
                         <div class="d-flex gap-2">
                             <button class="btn btn-outline-secondary btn-sm fw-bold" disabled>
-                                <i class="bi bi-file-earmark-excel me-1"></i> Exportar Finanzas (Próximamente)
+                                <i class="bi bi-file-earmark-excel me-1"></i> <span class="d-none d-md-inline">Exportar Finanzas (Próximamente)</span>
                             </button>
-                            <button class="btn btn-secondary btn-sm fw-bold" disabled style="opacity: 0.7;">
+                            <button class="btn btn-secondary btn-sm fw-bold d-none d-md-block" disabled style="opacity: 0.7;">
                                 <i class="bi bi-file-earmark-pdf me-1"></i> Informe NOM-004 (Próximamente)
                             </button>
                         </div>
@@ -628,7 +695,7 @@
                             <div class="card-psico h-100">
                                 <h5 class="fw-bold mb-3"><i class="bi bi-shield-lock me-2"></i>Seguridad de Sincronización</h5>
                                 <p class="text-muted small">Genera la llave maestra para conectar los teléfonos de tus pacientes al asistente virtual.</p>
-                                <div class="alert alert-light border small">
+                                <div class="alert alert-light border small text-break">
                                     <strong>Token de Conexión:</strong> <code class="text-primary" id="display-token">[Token_Generado]</code>
                                 </div>
                                 <button class="btn btn-outline-secondary btn-sm w-100 mb-2">Generar Nuevo Token</button>
@@ -646,11 +713,11 @@
                                 <div class="input-group mb-3 mt-4">
                                     <span class="input-group-text bg-light text-muted"><i class="bi bi-link-45deg"></i></span>
                                     <input type="text" class="form-control text-muted" id="url-calendario-suscripcion" readonly value="Generando enlace...">
-                                    <button class="btn btn-success fw-bold" type="button" onclick="copiarLinkCalendario()"><i class="bi bi-clipboard me-1"></i> Copiar</button>
+                                    <button class="btn btn-success fw-bold" type="button" onclick="copiarLinkCalendario()"><i class="bi bi-clipboard me-1"></i> <span class="d-none d-md-inline">Copiar</span></button>
                                 </div>
                                 
                                 <div class="small text-muted bg-light p-3 rounded">
-                                    <i class="bi bi-apple me-1 text-dark"></i> <strong>Apple:</strong> Configuración > Calendario > Cuentas > Agregar > Otra > Calendario Suscrito.<br>
+                                    <i class="bi bi-apple me-1 text-dark"></i> <strong>Apple:</strong> Abre Safari en tu iPhone, pega el enlace en la barra de direcciones y presiona Enter. iOS te preguntará si deseas suscribirte al calendario.<br>
                                     <i class="bi bi-google me-1 text-danger mt-2 d-inline-block"></i> <strong>Google:</strong> Desde tu PC entra a Google Calendar > Agregar calendario > Desde URL.
                                 </div>
                             </div>
@@ -858,26 +925,26 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="d-flex flex-wrap align-items-center gap-3">
-                            <select class="form-select form-select-sm shadow-sm" id="selectPacienteSesion" style="max-width: 300px;">
+                            <select class="form-select form-select-sm shadow-sm flex-grow-1 flex-md-grow-0" id="selectPacienteSesion" style="max-width: 300px;">
                                 <option value="" selected disabled>Seleccionar cita o paciente...</option>
                             </select>
                             
-                            <div class="d-flex align-items-center gap-2 bg-white p-1 px-2 rounded border border-primary-subtle shadow-sm">
+                            <div class="d-flex align-items-center gap-2 bg-white p-1 px-2 rounded border border-primary-subtle shadow-sm flex-wrap w-100 w-md-auto">
                                 <span class="small text-muted fw-bold">Vía:</span>
-                                <select class="form-select form-select-sm border-0" id="sesion-via" style="width: 110px; box-shadow: none;">
+                                <select class="form-select form-select-sm border-0 flex-grow-1 flex-md-grow-0" id="sesion-via" style="width: auto; min-width: 100px; box-shadow: none;">
                                     <option value="presencial">Presencial</option>
                                     <option value="meet">Google Meet</option>
                                     <option value="zoom">Zoom</option>
                                     <option value="face">FaceTime</option>
                                 </select>
                                 <button class="btn btn-outline-primary btn-sm py-1 px-2 small" onclick="validarYAccionar('generar')" title="Generar Link Único">
-                                    <i class="bi bi-link-45deg"></i> Generar
+                                    <i class="bi bi-link-45deg"></i> <span class="d-none d-md-inline">Generar</span>
                                 </button>
                                 <button class="btn btn-psico-primary btn-sm py-1 px-2 small" onclick="validarYAccionar('enviar')" title="Enviar Link a Paciente">
-                                    <i class="bi bi-send-fill"></i> Enviar
+                                    <i class="bi bi-send-fill"></i> <span class="d-none d-md-inline">Enviar</span>
                                 </button>
                             </div>
-                            <span class="badge bg-white text-muted border py-2 px-3 ms-auto"><i class="bi bi-clock-history me-1"></i> <span id="sesion-timer">00:00:00</span></span>
+                            <span class="badge bg-white text-muted border py-2 px-3 ms-auto ms-md-auto mt-2 mt-md-0"><i class="bi bi-clock-history me-1"></i> <span id="sesion-timer">00:00:00</span></span>
                         </div>
                     </div>
                 </div>
@@ -914,9 +981,9 @@
                                         <textarea class="form-control bg-light border-0" id="soap-p" rows="4"></textarea>
                                     </div>
                                 </div>
-                                <div class="modal-footer border-top-0 pt-3 px-0 pb-0 bg-light mt-3">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="pausarSesion()">Pausar Sesión</button>
-                                    <button type="submit" class="btn-psico-primary"><i class="bi bi-check-circle me-1"></i> Finalizar y Analizar con IA</button>
+                                <div class="modal-footer border-top-0 pt-3 px-0 pb-0 bg-light mt-3 flex-column flex-md-row">
+                                    <button type="button" class="btn btn-outline-secondary w-100 w-md-auto mb-2 mb-md-0" onclick="pausarSesion()">Pausar Sesión</button>
+                                    <button type="submit" class="btn-psico-primary w-100 w-md-auto"><i class="bi bi-check-circle me-1"></i> Finalizar y Analizar con IA</button>
                                 </div>
                             </form>
                         </div>
@@ -994,7 +1061,7 @@
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-0 d-flex" style="background-color: var(--psico-bg);">
+                <div class="modal-body p-0 d-flex flex-column flex-md-row" style="background-color: var(--psico-bg);">
                     
                     <div class="w-25 bg-white border-end p-4 overflow-auto">
                         
@@ -1033,17 +1100,19 @@
                             <p class="text-dark bg-light p-2 rounded border mb-0" style="white-space: pre-wrap;" id="exp-notas-extra"></p>
                         </div>
                         
-                        <hr class="text-muted opacity-25">
+                        <hr class="text-muted opacity-25 d-none d-md-block">
 
-                        <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-magic me-2"></i>Análisis de LucIA</h6>
-                        <div class="alert alert-secondary border-0 p-3 small text-muted text-center mb-4" id="expediente-ia-data">
-                            <i class="bi bi-bar-chart-steps fs-3 d-block mb-2"></i>
-                            LucIA necesita al menos 1 sesión registrada para generar un análisis.
-                        </div>
+                        <div class="d-none d-md-block">
+                            <h6 class="fw-bold text-primary mb-3 mt-4"><i class="bi bi-magic me-2"></i>Análisis de LucIA</h6>
+                            <div class="alert alert-secondary border-0 p-3 small text-muted text-center mb-4" id="expediente-ia-data">
+                                <i class="bi bi-bar-chart-steps fs-3 d-block mb-2"></i>
+                                LucIA necesita al menos 1 sesión registrada para generar un análisis.
+                            </div>
 
-                        <h6 class="fw-bold text-muted mb-3 mt-4">Progreso Clínico</h6>
-                        <div class="text-center text-muted small p-3 bg-light rounded" id="expediente-kpis-data">
-                            Las gráficas de ansiedad y ánimo aparecerán aquí automáticamente.
+                            <h6 class="fw-bold text-muted mb-3 mt-4">Progreso Clínico</h6>
+                            <div class="text-center text-muted small p-3 bg-light rounded" id="expediente-kpis-data">
+                                Las gráficas de ansiedad y ánimo aparecerán aquí automáticamente.
+                            </div>
                         </div>
                     </div>
                     
@@ -1071,6 +1140,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        // --- FUNCIÓN PARA EL MENÚ HAMBURGUESA ---
+        function toggleSidebar(hideOnly = false) {
+            const sidebar = document.getElementById('sidebar');
+            if (hideOnly) {
+                sidebar.classList.remove('show');
+            } else {
+                sidebar.classList.toggle('show');
+            }
+        }
+        // ----------------------------------------------
+
         // ==========================================
         // 1. SEGURIDAD Y CONEXIÓN SUPABASE
         // ==========================================
@@ -1097,10 +1177,12 @@
                 const welcomeText = document.getElementById('welcome-text');
                 if(welcomeText) welcomeText.innerText = `¡Hola, ${nombreDoctor}!`;
 
-                // NUEVO: Generar URL de suscripción del calendario automáticamente
                 const calInput = document.getElementById('url-calendario-suscripcion');
                 if (calInput) {
-                    calInput.value = `${window.location.origin}/api/calendario/${session.user.id}/psicogestor.ics`;
+                    const origen = window.location.origin
+                        .replace('https://', '')
+                        .replace('http://', '');
+                    calInput.value = `webcal://${origen}/api/calendario/${session.user.id}/psicogestor.ics`;
                 }
 
                 cargarPacientes();
@@ -1138,7 +1220,7 @@
         verificarSeguridad();
         
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('current-date-display').innerHTML = `<i class="bi bi-calendar3 me-1"></i> ` + new Date().toLocaleDateString('es-ES', dateOptions);
+        document.getElementById('current-date-display').innerHTML = `<i class="bi bi-calendar3 me-1"></i> <span class="d-none d-md-inline">` + new Date().toLocaleDateString('es-ES', dateOptions) + `</span><span class="d-inline d-md-none">` + new Date().toLocaleDateString('es-ES', {month: 'short', day: 'numeric'}) + `</span>`;
 
         // ==========================================
         // BUSCADOR GLOBAL EN TIEMPO REAL
@@ -1221,9 +1303,9 @@
                             html += `
                                 <tr class="opacity-50 bg-light">
                                     <td><span class="badge bg-secondary text-white border">${horaFormat}</span></td>
-                                    <td class="text-muted text-decoration-line-through small">${nombrePaciente}</td>
+                                    <td class="text-muted text-decoration-line-through small text-truncate" style="max-width: 100px;">${nombrePaciente}</td>
                                     <td class="text-end">
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-all"></i> Completada</span>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-all"></i> <span class="d-none d-md-inline">Completada</span></span>
                                     </td>
                                 </tr>
                             `;
@@ -1231,10 +1313,10 @@
                             html += `
                                 <tr>
                                     <td><span class="badge bg-light text-dark border">${horaFormat}</span></td>
-                                    <td class="fw-bold small">${nombrePaciente}</td>
+                                    <td class="fw-bold small text-truncate" style="max-width: 100px;">${nombrePaciente}</td>
                                     <td class="text-end">
                                         <button class="btn btn-sm btn-outline-success py-0 px-2 me-1" onclick="marcarCitaCompletada('${cita.id}')" title="Marcar como completada"><i class="bi bi-check-lg"></i></button>
-                                        <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="abrirExpediente('${cita.paciente_id}')" title="Abrir expediente">Abrir</button>
+                                        <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="abrirExpediente('${cita.paciente_id}')" title="Abrir expediente"><span class="d-none d-md-inline">Abrir</span><i class="bi bi-folder2-open d-inline d-md-none"></i></button>
                                     </td>
                                 </tr>
                             `;
@@ -1283,9 +1365,9 @@
                         html += `
                             <tr>
                                 <td class="small text-muted">${fechaFormat}</td>
-                                <td class="fw-bold small">${nombrePaciente}</td>
+                                <td class="fw-bold small text-truncate" style="max-width: 100px;">${nombrePaciente}</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="abrirExpediente('${sesion.paciente_id}')">Ver</button>
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="abrirExpediente('${sesion.paciente_id}')"><span class="d-none d-md-inline">Ver</span><i class="bi bi-eye d-inline d-md-none"></i></button>
                                 </td>
                             </tr>
                         `;
@@ -1423,7 +1505,7 @@
             let html = `
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="fw-bold m-0 text-start">Tus Pacientes (${data.length})</h5>
-                    <button class="btn-psico-primary btn-sm" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">+ Nuevo</button>
+                    <button class="btn-psico-primary btn-sm d-md-none" data-bs-toggle="modal" data-bs-target="#nuevoPacienteModal" onclick="abrirModalPaciente()">+ Nuevo</button>
                 </div>
                 <div class="table-responsive text-start shadow-sm rounded border">
                     <table class="table table-hover align-middle m-0 bg-white">
@@ -1431,7 +1513,7 @@
                             <tr>
                                 <th class="ps-3 border-0">Nombre</th>
                                 <th class="border-0">Contacto</th>
-                                <th class="border-0">Motivo</th>
+                                <th class="border-0 d-none d-md-table-cell">Motivo</th>
                                 <th class="text-end pe-3 border-0">Acciones</th>
                             </tr>
                         </thead>
@@ -1441,12 +1523,12 @@
             data.forEach(p => {
                 html += `
                     <tr>
-                        <td class="ps-3 fw-bold text-dark">${p.nombre}</td>
+                        <td class="ps-3 fw-bold text-dark text-truncate" style="max-width: 120px;">${p.nombre}</td>
                         <td class="small text-muted"><i class="bi bi-whatsapp text-success me-1"></i> ${p.telefono_whatsapp}</td>
-                        <td class="small text-truncate" style="max-width: 150px;" title="${p.motivo_consulta}">${p.motivo_consulta}</td>
+                        <td class="small text-truncate d-none d-md-table-cell" style="max-width: 150px;" title="${p.motivo_consulta}">${p.motivo_consulta}</td>
                         <td class="text-end pe-3">
                             <button class="btn btn-sm btn-outline-primary py-1 px-2" onclick="abrirExpediente('${p.id}')">
-                                <i class="bi bi-folder2-open"></i> Expediente
+                                <i class="bi bi-folder2-open"></i> <span class="d-none d-md-inline">Expediente</span>
                             </button>
                         </td>
                     </tr>
@@ -1806,11 +1888,11 @@
             const btn = document.getElementById('btn-iniciar-sesion-rapida');
             if (btn) {
                 if (localStorage.getItem('psicogestor_borrador')) {
-                    btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> Reanudar Sesión';
+                    btn.innerHTML = '<i class="bi bi-play-fill me-1"></i> <span class="d-none d-md-inline">Reanudar Sesión</span>';
                     btn.classList.add('btn-warning', 'text-dark');
                     btn.classList.remove('btn-psico-primary');
                 } else {
-                    btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> Iniciar Sesión Rápida';
+                    btn.innerHTML = '<i class="bi bi-play-circle me-1"></i> <span class="d-none d-md-inline">Iniciar Sesión Rápida</span>';
                     btn.classList.add('btn-psico-primary');
                     btn.classList.remove('btn-warning', 'text-dark');
                 }
