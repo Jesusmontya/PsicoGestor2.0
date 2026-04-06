@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -59,12 +59,14 @@ async def root():
 # ==========================================
 
 class CitaCreate(BaseModel):
-    paciente: str
+    paciente: str # UUID del paciente
+    profesional_id: str # UUID del psicólogo
     fecha: str
     hora: str
     tipo: str
     notas: str
     sync: bool
+    modalidad: str = "presencial"
 
 class SesionAnalisis(BaseModel):
     paciente_id: str
@@ -113,7 +115,7 @@ async def registrar_paciente(paciente: PacienteNuevo) -> dict[str, Any]:
 @app.get("/api/pacientes/{doctor_id}")
 async def listar_pacientes(doctor_id: str) -> dict[str, Any]:
     try:
-        respuesta = supabase.table('pacientes').select('*').eq('doctor_id', doctor_id).execute()
+        respuesta = supabase.table('pacientes').select('*').eq('profesional_id', doctor_id).execute()
         return {
             "status": "success",
             "pacientes": respuesta.data
@@ -126,12 +128,31 @@ async def listar_pacientes(doctor_id: str) -> dict[str, Any]:
 @app.post("/api/citas")
 async def crear_cita(cita: CitaCreate) -> dict[str, Any]:
     try:
+        # Combinar fecha y hora para el formato TIMESTAMPTZ de Supabase
+        # Asumimos zona horaria de Culiacán (-07:00)
+        fecha_hora_iso = f"{cita.fecha}T{cita.hora}:00-07:00"
+
+        payload = {
+            "paciente_id": cita.paciente,
+            "profesional_id": cita.profesional_id,
+            "fecha_hora": fecha_hora_iso,
+            "tipo_consulta": cita.tipo,
+            "modalidad": cita.modalidad,
+            "notas_previas": cita.notas,
+            "sync_google": cita.sync,
+            "estado": "programada"
+        }
+
+        # GUARDAR EN LA BASE DE DATOS
+        respuesta = supabase.table('citas').insert(payload).execute()
+        
         return {
             "status": "success", 
-            "mensaje": "Cita recibida",
-            "datos": cita.model_dump() 
+            "mensaje": "Cita guardada correctamente",
+            "datos": respuesta.data 
         }
     except Exception as e:
+        print(f"Error al crear cita: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sesiones/analizar")
@@ -232,37 +253,58 @@ async def chat_oraculo(chat: MensajeChat, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- NUEVO: RUTA DE SUSCRIPCIÓN DE CALENDARIO (WEBCAL) ---
+# --- RUTA DE SUSCRIPCIÓN DE CALENDARIO (CON MODO DEBUG) ---
 @app.get("/api/calendario/{profesional_id}/psicogestor.ics")
-async def feed_calendario(profesional_id: str):
+async def feed_calendario(profesional_id: str, request: Request):
     try:
-        # 1. Consultar citas programadas de este doctor
-        # Usamos el cliente 'supabase' global para que el iPhone pueda leerlo sin login
+        print(f"--- SOLICITANDO CALENDARIO PARA: {profesional_id} ---")
+        
+        # 1. Consultar citas
         respuesta = supabase.table('citas').select('*, pacientes(nombre)').eq('profesional_id', profesional_id).eq('estado', 'programada').execute()
         citas = respuesta.data
+        
+        print(f"CITAS ENCONTRADAS: {len(citas)}")
+        if len(citas) == 0:
+            print("OJO: Supabase regresó 0 citas. Revisa si hay citas 'programadas' o si la llave bloquea la lectura (RLS).")
 
-        # 2. Construir el archivo iCalendar (.ics)
+        # 2. Construir la URL base para que el iPhone sepa de dónde viene el calendario
+        #    Usamos el host real de la petición para que funcione tanto en Render como en local
+        base_url = str(request.base_url).rstrip("/")
+        webcal_url = base_url.replace("https://", "webcal://").replace("http://", "webcal://")
+
         ics = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
             "PRODID:-//Dev Group Studio//Psicogestor 2.0//ES",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
-            "X-WR-CALNAME:Psicogestor - Mis Citas",
+            "X-WR-CALNAME:Psicogestor - Agenda",
             "X-WR-TIMEZONE:UTC",
-            "REFRESH-INTERVAL;VALUE=DURATION:PT15M" # Sugerir actualización cada 15 min
+            f"X-WR-CALID:{webcal_url}/api/calendario/{profesional_id}/psicogestor.ics",
+            "REFRESH-INTERVAL;VALUE=DURATION:PT15M", 
+            "X-PUBLISHED-TTL:PT15M" 
         ]
 
         for cita in citas:
-            # Formatear fechas para el estándar ICS (YYYYMMDDTHHMMSSZ)
+            print(f"Procesando cita ID: {cita.get('id')}")
+            # Formatear fechas
             fecha_dt = datetime.fromisoformat(cita['fecha_hora'].replace('Z', '+00:00'))
-            start = fecha_dt.strftime("%Y%m%dT%H%M%SZ")
-            end = (fecha_dt + timedelta(hours=1)).strftime("%Y%m%dT%H%M%SZ")
-            stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+            start = fecha_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            end = (fecha_dt.astimezone(timezone.utc) + timedelta(hours=1)).strftime("%Y%m%dT%H%M%SZ")
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             
-            paciente = cita['pacientes']['nombre'] if cita.get('pacientes') else "Paciente"
-            notas = cita.get('notas_previas', 'Sin notas adicionales')
-            modalidad = cita.get('modalidad', 'Presencial')
+            # Extraer paciente con cuidado extremo
+            paciente_data = cita.get('pacientes')
+            if isinstance(paciente_data, list) and len(paciente_data) > 0:
+                nombre_p = paciente_data[0].get('nombre', 'Paciente')
+            elif isinstance(paciente_data, dict):
+                nombre_p = paciente_data.get('nombre', 'Paciente')
+            else:
+                nombre_p = "Paciente"
+
+            modalidad = cita.get('modalidad') or 'Presencial'
+            notas_crudas = cita.get('notas_previas') or 'Sin notas'
+            notas = str(notas_crudas).replace('\n', '\\n').replace('\r', '')
 
             ics.extend([
                 "BEGIN:VEVENT",
@@ -270,7 +312,7 @@ async def feed_calendario(profesional_id: str):
                 f"DTSTAMP:{stamp}",
                 f"DTSTART:{start}",
                 f"DTEND:{end}",
-                f"SUMMARY:Sesión con {paciente}",
+                f"SUMMARY:Sesión con {nombre_p}",
                 f"DESCRIPTION:Modalidad: {modalidad}\\nNotas: {notas}",
                 f"LOCATION:{modalidad}",
                 "END:VEVENT"
@@ -278,10 +320,21 @@ async def feed_calendario(profesional_id: str):
 
         ics.append("END:VCALENDAR")
         calendar_str = "\r\n".join(ics)
+        print("--- CALENDARIO GENERADO CON ÉXITO ---")
 
-        # 3. Retornar con el MIME type correcto para que el celular lo reconozca
-        return Response(content=calendar_str, media_type="text/calendar")
+        return Response(
+            content=calendar_str, 
+            media_type="text/calendar",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+                "Content-Disposition": "attachment; filename=psicogestor.ics"
+            }
+        )
 
     except Exception as e:
-        print(f"Error en feed de calendario: {e}")
-        raise HTTPException(status_code=500, detail="No se pudo generar el calendario.")
+        import traceback
+        error_real = traceback.format_exc()
+        print(f"!!! ERROR FATAL AL GENERAR CALENDARIO !!!\n{error_real}")
+        raise HTTPException(status_code=500, detail=f"Error en Python: {str(e)}")
