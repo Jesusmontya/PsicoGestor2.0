@@ -1109,6 +1109,9 @@
                             <button class="btn btn-link btn-sm text-primary p-0 mt-2 text-decoration-none d-block w-100" id="btnEditarExpediente">
                                 <i class="bi bi-pencil-square"></i> Editar Información
                             </button>
+                            <button class="btn btn-link btn-sm text-danger p-0 mt-3 text-decoration-none d-block w-100" id="btnBorrarExpediente">
+                                <i class="bi bi-trash"></i> Eliminar Expediente
+                            </button>
                         </div>
                         
                         <div class="small mb-4">
@@ -2223,6 +2226,41 @@
             }
         }
 
+        // --- NUEVA FUNCIÓN PARA BORRAR EXPEDIENTES Y SESIONES ---
+        async function confirmarBorradoExpediente(pacienteId, nombrePaciente) {
+            // 1. La Alerta de Seguridad
+            const confirmacion = confirm(`⚠️ ALERTA CRÍTICA ⚠️\n\n¿Estás completamente seguro de que deseas eliminar el expediente de ${nombrePaciente}?\n\nEsto borrará TODAS sus citas, historial clínico y datos. ESTA ACCIÓN NO SE PUEDE DESHACER.`);
+            
+            // Si el usuario le da a "Cancelar", detenemos todo.
+            if (!confirmacion) return;
+
+            // Si le da a "Aceptar", procedemos a borrar.
+            try {
+                const btn = document.getElementById('btnBorrarExpediente');
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Borrando...';
+                btn.disabled = true;
+
+                const { error } = await spb.from('pacientes').delete().eq('id', pacienteId);
+                if (error) throw error;
+
+                alert("🗑️ Expediente eliminado correctamente.");
+                
+                // Cerramos la ventana y recargamos las listas para que desaparezca
+                bootstrap.Modal.getInstance(document.getElementById('expedienteModal')).hide();
+                cargarPacientes();
+                cargarAgendaHoy(); 
+                cargarHistorialReciente();
+
+            } catch (err) {
+                alert("Error al eliminar el expediente: " + err.message);
+                console.error(err);
+            } finally {
+                const btn = document.getElementById('btnBorrarExpediente');
+                btn.innerHTML = '<i class="bi bi-trash"></i> Eliminar Expediente';
+                btn.disabled = false;
+            }
+        }
+
         async function borrarSesion(sesionId, pacienteId) {
             if (!confirm("¿Estás seguro de borrar esta nota clínica permanentemente?")) return;
 
@@ -2293,6 +2331,9 @@
                 abrirModalPaciente(paciente);
                 new bootstrap.Modal(document.getElementById('nuevoPacienteModal')).show();
             };
+
+            // --- NUEVA ASIGNACIÓN PARA EL BOTÓN DE BORRAR ---
+            document.getElementById('btnBorrarExpediente').onclick = () => confirmarBorradoExpediente(paciente.id, paciente.nombre);
 
             const modalElement = document.getElementById('expedienteModal');
             if (!modalElement.classList.contains('show')) {
