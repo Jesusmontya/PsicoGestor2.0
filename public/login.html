@@ -128,16 +128,19 @@
         <div class="text-center mt-4 small" id="mensaje-error" style="color: #e74c3c; display: none; font-weight: 500; background-color: #fdf0ed; padding: 10px; border-radius: 6px;">
             <i class="bi bi-exclamation-triangle-fill me-1"></i> <span id="texto-error">Acceso denegado.</span>
         </div>
+
+        <div class="text-center mt-4 border-top pt-3">
+            <p class="small text-muted mb-2">¿Eres psicólogo y aún no tienes cuenta?</p>
+            <a href="registro.html" class="btn btn-outline-primary btn-sm fw-bold w-100" style="border-color: var(--psico-primary); color: var(--psico-primary);">Regístrate</a>
+        </div>
     </div>
 
     <script>
-        // 1. Conexión corregida (Cambiamos 'supabase' por 'spb' para evitar el conflicto)
         const SUPABASE_URL = 'https://adbklyrecnyryusktftr.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYmtseXJlY255cnl1c2t0ZnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjQ5MTIsImV4cCI6MjA5MDg0MDkxMn0.sK3cbVoRX1PjQx9Me-9PTFXq0wEpWB1JR7EuVby4Gpw'; 
         
         const spb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // 2. Función de autenticación
         async function iniciarSesionCorreo() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
@@ -145,27 +148,27 @@
             const msgError = document.getElementById('mensaje-error');
             const txtError = document.getElementById('texto-error');
             
-            // Estado de carga
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Verificando...';
             btn.disabled = true;
             msgError.style.display = 'none';
 
-            // Petición a la base de datos usando la variable 'spb'
             const { data, error } = await spb.auth.signInWithPassword({
                 email: email,
                 password: password,
             });
 
             if (error) {
-                // Manejo de error
-                txtError.innerText = "Credenciales incorrectas. Verifica tu correo y contraseña.";
+                // Nuevo manejo de error por si no ha confirmado el correo
+                if (error.message.includes('Email not confirmed')) {
+                    txtError.innerText = "Por favor confirma tu correo electrónico antes de iniciar sesión.";
+                } else {
+                    txtError.innerText = "Credenciales incorrectas. Verifica tu correo y contraseña.";
+                }
                 msgError.style.display = 'block';
                 
-                // Restaurar botón
                 btn.innerHTML = 'Ingresar al Sistema <i class="bi bi-arrow-right ms-1"></i>';
                 btn.disabled = false;
             } else {
-                // Éxito: Redirección al dashboard
                 btn.classList.remove('btn-psico-primary');
                 btn.classList.add('btn-success');
                 btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Acceso Permitido';
