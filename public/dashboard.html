@@ -121,17 +121,17 @@
             .sidebar {
                 position: fixed;
                 height: 100vh;
-                transform: translateX(-100%); /* Oculta la barra hacia la izquierda */
+                transform: translateX(-100%); 
             }
             .sidebar.show {
-                transform: translateX(0); /* Muestra la barra */
+                transform: translateX(0); 
                 box-shadow: 2px 0 10px rgba(0,0,0,0.1);
             }
             .main-content {
                 width: 100%;
             }
             #globalSearch {
-                display: none; /* Oculta el input en móvil, deja solo la lupa si quieres, o puedes esconder todo */
+                display: none; 
             }
             .search-bar {
                  width: auto !important;
@@ -669,6 +669,32 @@
                     <h1 class="h3 fw-bold mb-4">Configuración del Sistema</h1>
                     
                     <div class="row g-4">
+                        <div class="col-md-12">
+                            <div class="card-psico border-start border-info border-4">
+                                <h5 class="fw-bold mb-3 text-info"><i class="bi bi-file-earmark-text me-2"></i>Gestor de Plantillas Clínicas</h5>
+                                <p class="text-muted small">Crea estructuras de preguntas para diferentes tipos de pacientes (ej. Niños, Terapia de Pareja).</p>
+                                <form id="formNuevaPlantilla" onsubmit="event.preventDefault(); guardarPlantilla();">
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-bold text-muted">Nombre de la Plantilla *</label>
+                                            <input type="text" class="form-control form-control-sm" id="plantilla-nombre" placeholder="Ej. Evaluación Infantil" required>
+                                        </div>
+                                        <div class="col-md-8">
+                                            <div class="d-flex justify-content-between align-items-end mb-2">
+                                                <label class="form-label small fw-bold text-muted mb-0">Campos / Preguntas Dinámicas</label>
+                                                <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="agregarPreguntaPlantilla()">
+                                                    <i class="bi bi-plus-circle"></i> Agregar Pregunta
+                                                </button>
+                                            </div>
+                                            <div id="plantilla-preguntas-container" class="mb-3">
+                                                </div>
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-info text-white btn-sm w-100 mt-2 fw-bold" id="btnGuardarPlantilla">Guardar Plantilla</button>
+                                </form>
+                            </div>
+                        </div>
+
                         <div class="col-md-6">
                             <div class="card-psico h-100">
                                 <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-camera-video me-2"></i>Canales de Atención Virtual</h5>
@@ -819,6 +845,14 @@
                 </div>
                 <div class="modal-body p-4">
                     <form id="formNuevoPaciente" onsubmit="event.preventDefault(); guardarNuevoPaciente();">
+                        
+                        <div class="alert alert-info p-3 mb-4 border-0 rounded-3">
+                            <label class="form-label fw-bold text-info small mb-2"><i class="bi bi-magic me-1"></i>Seleccionar Plantilla de Registro (Opcional)</label>
+                            <select class="form-select form-select-sm border-info shadow-sm" id="pac-plantilla-select" onchange="aplicarPlantillaPaciente()">
+                                <option value="">Registro Estándar (Sin plantilla)</option>
+                            </select>
+                        </div>
+
                         <h6 class="fw-bold text-primary mb-3">1. Identidad (NOM-004)</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-6">
@@ -878,7 +912,7 @@
                             </div>
                         </div>
 
-                        <h6 class="fw-bold text-primary mb-3">3. Datos Clínicos</h6>
+                        <h6 class="fw-bold text-primary mb-3">3. Datos Clínicos Fijos</h6>
                         <div class="row g-3 mb-4">
                             <div class="col-md-12">
                                 <label class="form-label text-muted small mb-1">Motivo de Consulta *</label>
@@ -896,10 +930,10 @@
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="fw-bold text-primary m-0">4. Otros Campos Personalizados</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-top pt-3">
+                            <h6 class="fw-bold text-primary m-0">4. Información Específica (Plantilla)</h6>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addCustomField()">
-                                <i class="bi bi-plus-circle me-1"></i> Agregar Campo
+                                <i class="bi bi-plus-circle me-1"></i> Añadir Campo Manual
                             </button>
                         </div>
                         <div id="customFieldsContainer" class="row g-2 mb-3">
@@ -1161,6 +1195,7 @@
         
         let pacientesCache = []; 
         let citasHoyCache = []; 
+        let plantillasCache = []; // NUEVO: Cache para las plantillas
         let editandoPacienteId = null; 
         let configProfesional = { link_meet: '', link_zoom: '', usuario_facetime: '' };
         let isPausando = false;
@@ -1192,6 +1227,7 @@
                 cargarProximaSesion(); 
                 actualizarBotonSesion();
                 cargarFinanzas(); 
+                cargarPlantillas(); // NUEVO: Cargar plantillas al iniciar
             }
         }
 
@@ -1581,13 +1617,134 @@
         }
 
         // ==========================================
-        // 4. REGISTRO DE PACIENTES Y CAMPOS DINÁMICOS
+        // 4. REGISTRO DE PACIENTES, CAMPOS DINÁMICOS Y PLANTILLAS
         // ==========================================
         
+        async function cargarPlantillas() {
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) return;
+
+                const { data, error } = await spb.from('plantillas')
+                    .select('*')
+                    .eq('profesional_id', session.user.id);
+
+                if (error) throw error;
+                plantillasCache = data || [];
+
+                // Actualizar el dropdown del modal de paciente
+                const selectEl = document.getElementById('pac-plantilla-select');
+                if (selectEl) {
+                    selectEl.innerHTML = '<option value="">Registro Estándar (Sin plantilla)</option>';
+                    plantillasCache.forEach(p => {
+                        selectEl.insertAdjacentHTML('beforeend', `<option value="${p.id}">${p.nombre_plantilla}</option>`);
+                    });
+                }
+            } catch (err) {
+                console.error("Error al cargar plantillas:", err);
+            }
+        }
+
+        function agregarPreguntaPlantilla() {
+            const container = document.getElementById('plantilla-preguntas-container');
+            const id = Date.now() + Math.floor(Math.random() * 1000);
+            container.insertAdjacentHTML('beforeend', `
+                <div class="d-flex gap-2 mb-2 pregunta-plantilla-row" id="preg-${id}">
+                    <input type="text" class="form-control form-control-sm preg-key" placeholder="Ej. Nombre de la escuela" required>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="document.getElementById('preg-${id}').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `);
+        }
+
+        async function guardarPlantilla() {
+            const btn = document.getElementById('btnGuardarPlantilla');
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+            btn.disabled = true;
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) throw new Error("Sin sesión activa");
+
+                const nombre = document.getElementById('plantilla-nombre').value.trim();
+                let campos = [];
+                
+                document.querySelectorAll('.pregunta-plantilla-row').forEach(row => {
+                    const key = row.querySelector('.preg-key').value.trim();
+                    if (key) campos.push({ nombre: key });
+                });
+
+                if (campos.length === 0) throw new Error("Agrega al menos una pregunta a la plantilla.");
+
+                const payload = {
+                    profesional_id: session.user.id,
+                    nombre_plantilla: nombre,
+                    campos: campos
+                };
+
+                const { error } = await spb.from('plantillas').insert([payload]);
+                if (error) throw error;
+
+                alert("✅ Plantilla guardada exitosamente.");
+                document.getElementById('formNuevaPlantilla').reset();
+                document.getElementById('plantilla-preguntas-container').innerHTML = '';
+                
+                // Recargar las plantillas para que aparezcan en el modal de pacientes
+                cargarPlantillas();
+
+            } catch (err) {
+                alert("Error al guardar plantilla: " + err.message);
+                console.error(err);
+            } finally {
+                btn.innerHTML = 'Guardar Plantilla';
+                btn.disabled = false;
+            }
+        }
+
+        function aplicarPlantillaPaciente() {
+            const selectEl = document.getElementById('pac-plantilla-select');
+            const plantillaId = selectEl.value;
+            const container = document.getElementById('customFieldsContainer');
+            
+            container.innerHTML = ''; // Limpiar campos actuales
+
+            if (!plantillaId) return; // Si elige "Estándar", se queda vacío
+
+            const plantilla = plantillasCache.find(p => p.id === plantillaId);
+            if (plantilla && plantilla.campos) {
+                plantilla.campos.forEach(campo => {
+                    addCustomField(campo.nombre, '');
+                });
+            }
+        }
+
+        // Modificada para aceptar valores predefinidos (útil para la IA y las Plantillas)
+        function addCustomField(keyVal = '', valVal = '') {
+            const container = document.getElementById('customFieldsContainer');
+            const fieldId = Date.now() + Math.floor(Math.random() * 1000);
+            
+            // Protección básica contra comillas en HTML
+            const safeKey = typeof keyVal === 'string' ? keyVal.replace(/"/g, '&quot;') : '';
+            const safeVal = typeof valVal === 'string' ? valVal.replace(/"/g, '&quot;') : '';
+
+            const fieldHTML = `
+                <div class="col-md-12 d-flex gap-2 mb-2 custom-field-row" id="field-${fieldId}">
+                    <input type="text" class="form-control form-control-sm w-25 field-key fw-bold" placeholder="Nombre de la pregunta" value="${safeKey}">
+                    <input type="text" class="form-control form-control-sm field-value" placeholder="Respuesta" value="${safeVal}">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="document.getElementById('field-${fieldId}').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', fieldHTML);
+        }
+
         function abrirModalPaciente(paciente = null) {
             const form = document.getElementById('formNuevoPaciente');
             form.reset();
             document.getElementById('customFieldsContainer').innerHTML = ''; 
+            document.getElementById('pac-plantilla-select').value = ""; 
             
             if (paciente) {
                 editandoPacienteId = paciente.id;
@@ -1607,6 +1764,27 @@
                 document.getElementById('pac-motivo').value = paciente.motivo_consulta;
                 document.getElementById('pac-terapia-previa').checked = paciente.terapia_previa;
 
+                // --- NUEVA LÓGICA HÍBRIDA PARA CARGAR DATOS ---
+                
+                // 1. Marcar la plantilla en el select si se usó alguna
+                if (paciente.plantilla_usada) {
+                    const opts = document.getElementById('pac-plantilla-select').options;
+                    for(let i=0; i<opts.length; i++) {
+                        if(opts[i].text === paciente.plantilla_usada) {
+                            opts[i].selected = true;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. Cargar los datos extra dinámicos (JSONB)
+                if (paciente.datos_extra && typeof paciente.datos_extra === 'object' && Object.keys(paciente.datos_extra).length > 0) {
+                    for (const [key, value] of Object.entries(paciente.datos_extra)) {
+                        addCustomField(key, value);
+                    }
+                } 
+
+                // 3. Compatibilidad con el sistema viejo (si tenían campos extra en el textarea de alergias)
                 const notasOriginales = paciente.notas_alergias_meds || '';
                 if (notasOriginales.includes('[Datos Adicionales]:')) {
                     const partes = notasOriginales.split('[Datos Adicionales]:');
@@ -1614,26 +1792,12 @@
                 } else {
                     document.getElementById('pac-alergias').value = notasOriginales;
                 }
+
             } else {
                 editandoPacienteId = null;
                 document.getElementById('nuevoPacienteModalLabel').innerText = "Registrar Nuevo Paciente";
                 document.getElementById('btnGuardarPaciente').innerText = "Guardar Paciente";
             }
-        }
-
-        function addCustomField() {
-            const container = document.getElementById('customFieldsContainer');
-            const fieldId = Date.now();
-            const fieldHTML = `
-                <div class="col-md-12 d-flex gap-2 mb-2 custom-field-row" id="field-${fieldId}">
-                    <input type="text" class="form-control form-control-sm w-25 field-key" placeholder="Ej. Tipo de Sangre">
-                    <input type="text" class="form-control form-control-sm field-value" placeholder="Valor">
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="document.getElementById('field-${fieldId}').remove()">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', fieldHTML);
         }
 
         async function guardarNuevoPaciente() { 
@@ -1645,19 +1809,18 @@
                 const { data: { session }, error: sessionError } = await spb.auth.getSession();
                 if (sessionError || !session) throw new Error("No hay sesión activa");
 
-                let camposExtraTexto = "";
+                // NUEVA LÓGICA DE EXTRACCIÓN DE DATOS DINÁMICOS
+                let datosExtraObj = {};
                 document.querySelectorAll('.custom-field-row').forEach(row => {
                     const key = row.querySelector('.field-key').value.trim();
                     const val = row.querySelector('.field-value').value.trim();
-                    if(key && val) {
-                        camposExtraTexto += `\n- ${key}: ${val}`;
+                    if(key) {
+                        datosExtraObj[key] = val;
                     }
                 });
 
-                let notasFinales = document.getElementById('pac-alergias').value.trim();
-                if(camposExtraTexto !== "") {
-                    notasFinales += `\n\n[Datos Adicionales]:${camposExtraTexto}`;
-                }
+                const selectPlantilla = document.getElementById('pac-plantilla-select');
+                const plantillaName = (selectPlantilla && selectPlantilla.value) ? selectPlantilla.options[selectPlantilla.selectedIndex].text : null;
 
                 const payload = {
                     profesional_id: session.user.id,
@@ -1673,7 +1836,11 @@
                     contacto_emergencia_tel: document.getElementById('pac-tel-emergencia').value,
                     motivo_consulta: document.getElementById('pac-motivo').value,
                     terapia_previa: document.getElementById('pac-terapia-previa').checked,
-                    notas_alergias_meds: notasFinales || null
+                    
+                    // APLICACIÓN DEL SISTEMA HÍBRIDO
+                    notas_alergias_meds: document.getElementById('pac-alergias').value.trim() || null,
+                    plantilla_usada: plantillaName,
+                    datos_extra: datosExtraObj
                 };
 
                 let error;
@@ -2100,7 +2267,25 @@
             document.getElementById('exp-emergencia-tel').innerText = paciente.contacto_emergencia_tel || 'N/A';
             document.getElementById('exp-motivo').innerText = paciente.motivo_consulta || 'Sin motivo registrado';
             
-            document.getElementById('exp-notas-extra').innerText = paciente.notas_alergias_meds || 'Sin notas adicionales';
+            // --- NUEVO: Mostrar datos de la plantilla ---
+            let extrasHTML = "";
+            if (paciente.plantilla_usada) {
+                extrasHTML += `<strong>Plantilla:</strong> <span class="badge bg-info text-white">${paciente.plantilla_usada}</span><br><br>`;
+            }
+            if (paciente.datos_extra && Object.keys(paciente.datos_extra).length > 0) {
+                for (const [key, value] of Object.entries(paciente.datos_extra)) {
+                    extrasHTML += `<strong>${key}:</strong> ${value}<br>`;
+                }
+                extrasHTML += '<br>';
+            }
+            
+            // Mostrar también las alergias o notas médicas antiguas
+            const alergiasText = paciente.notas_alergias_meds ? `<strong>Alergias/Med.:</strong> ${paciente.notas_alergias_meds}` : '';
+            
+            const finalExtraText = (extrasHTML + alergiasText) || 'Sin notas adicionales';
+            
+            // Usamos innerHTML en vez de innerText para que se vean los <br> y negritas correctamente
+            document.getElementById('exp-notas-extra').innerHTML = finalExtraText;
             document.getElementById('expediente-paciente-nombre').innerText = `Expediente de: ${paciente.nombre}`;
 
             document.getElementById('btnEditarExpediente').onclick = () => {
