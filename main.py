@@ -1,6 +1,6 @@
 import os
 import json
-from typing import Any
+from typing import Any, List, Dict
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -95,6 +95,11 @@ class PacienteNuevo(BaseModel):
     terapia_previa: bool = False
     notas_alergias_meds: str | None = None
 
+class PlantillaCreate(BaseModel):
+    profesional_id: str
+    nombre_plantilla: str
+    campos: List[Dict[str, Any]]
+
 # ==========================================
 # 4. RUTAS DE LA API (ENDPOINTS JSON)
 # ==========================================
@@ -123,6 +128,34 @@ async def listar_pacientes(doctor_id: str) -> dict[str, Any]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al obtener lista: {str(e)}")
 
+# --- PLANTILLAS ---
+@app.post("/api/plantillas")
+async def crear_plantilla(plantilla: PlantillaCreate) -> dict[str, Any]:
+    try:
+        respuesta = supabase.table("plantillas").insert({
+            "profesional_id": plantilla.profesional_id,
+            "nombre_plantilla": plantilla.nombre_plantilla,
+            "campos": plantilla.campos
+        }).execute()
+        
+        return {
+            "status": "success", 
+            "mensaje": "Plantilla guardada correctamente", 
+            "data": respuesta.data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al guardar plantilla: {str(e)}")
+
+@app.get("/api/plantillas/{profesional_id}")
+async def obtener_plantillas(profesional_id: str) -> dict[str, Any]:
+    try:
+        respuesta = supabase.table("plantillas").select("*").eq("profesional_id", profesional_id).execute()
+        return {
+            "status": "success", 
+            "plantillas": respuesta.data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al obtener plantillas: {str(e)}")
 
 # --- CITAS Y SESIONES ---
 @app.post("/api/citas")
