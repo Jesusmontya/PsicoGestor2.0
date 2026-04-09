@@ -169,7 +169,36 @@
                 display: inline-block;
             }
         }
-        /* -------------------------------------- */
+        
+        /* --- ESTILOS PARA ACCESOS RÁPIDOS --- */
+        .paciente-reciente-card {
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 12px;
+            padding: 1rem 0.2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            height: 100%;
+        }
+
+        .paciente-reciente-card:hover {
+            background: rgba(58, 123, 213, 0.04);
+            border-color: var(--psico-primary);
+            transform: translateY(-3px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        .avatar-iniciales {
+            width: 42px; 
+            height: 42px; 
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: bold;
+        }
 
         .view-section {
             display: none; 
@@ -265,6 +294,123 @@
             background-color: #cbd5e1;
             border-radius: 10px;
         }
+
+        /* --- BOTÓN FLOTANTE LucIA --- */
+        .lucia-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--psico-primary), var(--psico-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.8rem;
+            box-shadow: 0 4px 15px rgba(58, 123, 213, 0.4);
+            cursor: pointer;
+            z-index: 2000;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .lucia-fab:hover {
+            transform: scale(1.1) rotate(10deg);
+            box-shadow: 0 6px 20px rgba(58, 123, 213, 0.6);
+        }
+
+        .lucia-fab::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: var(--psico-primary);
+            border-radius: 50%;
+            z-index: -1;
+            animation: lucia-pulse 2s infinite;
+        }
+
+        @keyframes lucia-pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        /* Panel de Chat Lateral */
+        .lucia-chat-panel {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            display: none; 
+            flex-direction: column;
+            z-index: 2000;
+            overflow: hidden;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .lucia-chat-header {
+            background: var(--psico-primary);
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* --- GLOBITO DE BIENVENIDA LucIA --- */
+        .lucia-welcome-bubble {
+            position: fixed;
+            bottom: 105px; /* Lo coloca justo encima del botón flotante */
+            right: 30px;
+            background: #ffffff;
+            color: var(--text-dark);
+            padding: 12px 25px 12px 15px;
+            border-radius: 12px 12px 0 12px; /* Le da la forma apuntando al botón */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+            font-size: 0.85rem;
+            max-width: 250px;
+            z-index: 1999;
+            border: 1px solid rgba(58, 123, 213, 0.2);
+            border-left: 4px solid var(--psico-primary);
+            animation: floatBubble 3s ease-in-out infinite;
+        }
+
+        /* El piquito de la burbuja */
+        .lucia-welcome-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            right: 0;
+            border-width: 10px 15px 0 0;
+            border-style: solid;
+            border-color: #ffffff transparent transparent transparent;
+        }
+
+        .close-bubble {
+            position: absolute;
+            top: 2px;
+            right: 8px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            line-height: 1;
+        }
+
+        .close-bubble:hover {
+            color: var(--psico-primary);
+        }
+
+        @keyframes floatBubble {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
@@ -314,6 +460,7 @@
                             <i class="bi bi-gear"></i> Configuración
                         </a>
                     </li>
+                    
                 </ul>
             </div>
 
@@ -389,23 +536,18 @@
                                 </ul>
                             </div>
 
-                            <div class="card-psico mt-4 border-start border-primary border-4">
-                                <h5 class="fw-bold mb-3"><i class="bi bi-magic text-primary me-2"></i>Pregúntale a LucIA</h5>
-                                
-                                <div class="bg-light p-3 rounded mb-3" style="height: 200px; overflow-y: auto; display: flex; flex-direction: column;" id="chat-ia-container">
-                                    <div class="text-start mb-2 pe-4">
-                                        <div class="d-inline-block bg-white border p-2 rounded small text-dark">
-                                            <em><i class="bi bi-robot text-primary me-1"></i> Hola, soy LucIA, tu asistente clínica. ¿En qué te ayudo hoy?</em>
-                                        </div>
-                                    </div>
+                            <div class="card-psico mt-4 border-start border-info border-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h5 class="fw-bold m-0"><i class="bi bi-clock-history text-info me-2"></i>Vistos Recientemente</h5>
+                                    <button class="btn btn-sm btn-link text-info p-0 text-decoration-none fw-bold" onclick="switchView('pacientes')">Ir al Directorio <i class="bi bi-arrow-right"></i></button>
                                 </div>
                                 
-                                <form onsubmit="event.preventDefault(); enviarMensajeIA();">
-                                    <div class="input-group">
-                                        <input type="text" class="form-control form-control-sm border-primary-subtle" id="ia-prompt-input" placeholder="Escribe tu consulta clínica aquí...">
-                                        <button class="btn btn-psico-primary btn-sm" type="submit" id="btn-enviar-ia"><i class="bi bi-send"></i></button>
+                                <div class="row g-2" id="grid-recientes">
+                                    <div class="col-12 text-center py-3">
+                                        <div class="spinner-border spinner-border-sm text-info"></div>
+                                        <span class="small text-muted ms-2">Cargando recientes...</span>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
 
@@ -687,7 +829,7 @@
                                                 </button>
                                             </div>
                                             <div id="plantilla-preguntas-container" class="mb-3">
-                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     <button type="submit" class="btn btn-info text-white btn-sm w-100 mt-2 fw-bold" id="btnGuardarPlantilla">Guardar Plantilla</button>
@@ -1174,6 +1316,40 @@
         </div>
     </div>
 
+    <div class="lucia-welcome-bubble" id="luciaWelcomeBubble">
+        <span class="close-bubble" onclick="document.getElementById('luciaWelcomeBubble').style.display='none'">&times;</span>
+        <strong>¡Hola! 👋</strong><br>
+        ¿Necesitas ayuda con algún paciente o reporte?
+    </div>
+
+    <div class="lucia-fab" onclick="toggleLuciaChat()" title="Hablar con LucIA">
+        <i class="bi bi-robot"></i>
+    </div>
+
+    <div class="lucia-chat-panel" id="luciaChatPanel">
+        <div class="lucia-chat-header">
+            <span class="fw-bold"><i class="bi bi-robot me-2"></i>LucIA Asistente</span>
+            <button class="btn btn-sm text-white p-0" onclick="toggleLuciaChat()"><i class="bi bi-x-lg"></i></button>
+        </div>
+        
+        <div class="flex-grow-1 p-3 overflow-auto bg-light" id="lucia-chat-body" style="font-size: 0.9rem;">
+            <div class="text-start mb-2">
+                <div class="d-inline-block bg-white border p-2 rounded shadow-sm">
+                    ¡Hola! Soy LucIA. ¿Necesitas ayuda con algún paciente o reporte?
+                </div>
+            </div>
+        </div>
+
+        <div class="p-2 border-top bg-white">
+            <form onsubmit="event.preventDefault(); enviarMensajeLucIAFlotante();">
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control" id="lucia-input-flotante" placeholder="Escribe aquí...">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-send"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
@@ -1277,6 +1453,52 @@
             );
             renderizarTablaPacientes(filtrados);
         });
+
+        // ==========================================
+        // RENDERIZAR ACCESOS RÁPIDOS EN INICIO (CON MEMORIA LOCAL)
+        // ==========================================
+        function renderizarRecientesInicio() {
+            const container = document.getElementById('grid-recientes');
+            if (!container) return;
+
+            // Intentar sacar los IDs de la memoria (los que has abierto)
+            const vistosIds = JSON.parse(localStorage.getItem('expedientes_vistos') || '[]');
+            
+            let recientes = [];
+
+            if (vistosIds.length > 0) {
+                // Buscamos los datos completos de esos IDs en el cache
+                recientes = vistosIds.map(id => pacientesCache.find(p => p.id === id)).filter(p => p !== undefined);
+            } 
+            
+            // Si no hay nada en memoria (primera vez), mostrar los últimos agregados
+            if (recientes.length === 0) {
+                recientes = pacientesCache.slice(0, 4);
+            }
+
+            if (recientes.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center small text-muted py-3"><i class="bi bi-folder-x fs-3 d-block mb-2 opacity-50"></i>No hay expedientes recientes.</div>';
+                return;
+            }
+
+            let html = '';
+            const colores = ['bg-primary', 'bg-success', 'bg-warning text-dark', 'bg-danger'];
+
+            recientes.forEach((p, index) => {
+                const iniciales = p.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                const colorClase = colores[index % colores.length];
+
+                html += `
+                    <div class="col-6 col-md-3">
+                        <div class="paciente-reciente-card" onclick="abrirExpediente('${p.id}')" title="Abrir expediente de ${p.nombre}">
+                            <div class="${colorClase} text-white avatar-iniciales mb-2 shadow-sm">${iniciales}</div>
+                            <div class="fw-bold text-dark text-truncate small px-1" style="font-size: 0.75rem;">${p.nombre}</div>
+                        </div>
+                    </div>`;
+            });
+
+            container.innerHTML = html;
+        }
 
         // ==========================================
         // 2. PANEL DE SESIONES DINÁMICO (AGENDA E HISTORIAL)
@@ -1520,6 +1742,7 @@
                 actualizarDropdownSesionActiva(); 
 
                 renderizarTablaPacientes(pacientesCache);
+                renderizarRecientesInicio();
 
             } catch (error) {
                 console.error(error);
@@ -1722,7 +1945,6 @@
             }
         }
 
-        // Modificada para aceptar valores predefinidos (útil para la IA y las Plantillas)
         function addCustomField(keyVal = '', valVal = '') {
             const container = document.getElementById('customFieldsContainer');
             const fieldId = Date.now() + Math.floor(Math.random() * 1000);
@@ -1876,87 +2098,6 @@
                 btn.innerHTML = editandoPacienteId ? 'Guardar Cambios' : 'Guardar Paciente';
                 btn.disabled = false;
             }
-        }
-
-        // ==========================================
-        // 5. LÓGICA DE LA IA (LucIA)
-        // ==========================================
-        async function enviarMensajeIA() { 
-            const input = document.getElementById('ia-prompt-input');
-            const prompt = input.value.trim();
-            if (!prompt) return;
-
-            const container = document.getElementById('chat-ia-container');
-            const btn = document.getElementById('btn-enviar-ia');
-
-            input.disabled = true;
-            btn.disabled = true;
-            
-            container.insertAdjacentHTML('beforeend', `
-                <div class="text-end mb-2 ps-4">
-                    <div class="d-inline-block bg-primary text-white p-2 rounded small text-start shadow-sm">
-                        ${prompt}
-                    </div>
-                </div>
-            `);
-            input.value = '';
-            container.scrollTop = container.scrollHeight;
-
-            const loadingId = 'loading-' + Date.now();
-            container.insertAdjacentHTML('beforeend', `
-                <div class="text-start mb-2 pe-4" id="${loadingId}">
-                    <div class="d-inline-block bg-white border p-2 rounded small text-muted">
-                        <em><i class="bi bi-robot text-primary me-1"></i> Pensando... <span class="spinner-grow spinner-grow-sm ms-1" style="width: 0.8rem; height: 0.8rem;"></span></em>
-                    </div>
-                </div>
-            `);
-            container.scrollTop = container.scrollHeight;
-
-            try {
-                const { data: { session } } = await spb.auth.getSession();
-                if (!session) throw new Error("No hay sesión activa");
-
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}` 
-                    },
-                    body: JSON.stringify({ mensaje: prompt })
-                });
-
-                const data = await response.json();
-                document.getElementById(loadingId).remove();
-
-                if (data.status === 'success') {
-                    container.insertAdjacentHTML('beforeend', `
-                        <div class="text-start mb-2 pe-4">
-                            <div class="d-inline-block bg-white border p-2 rounded small text-dark shadow-sm">
-                                <i class="bi bi-robot text-primary me-1"></i> ${data.respuesta.replace(/\n/g, '<br>')}
-                            </div>
-                        </div>
-                    `);
-                } else {
-                    throw new Error(data.detail || "Error desconocido en el servidor");
-                }
-            } catch (error) {
-                const loadingEl = document.getElementById(loadingId);
-                if(loadingEl) loadingEl.remove();
-
-                container.insertAdjacentHTML('beforeend', `
-                    <div class="text-start mb-2 pe-4">
-                        <div class="d-inline-block bg-danger-subtle text-danger border border-danger-subtle p-2 rounded small">
-                            <i class="bi bi-exclamation-triangle me-1"></i> Error: ${error.message || "No me pude conectar con el servidor."}
-                        </div>
-                    </div>
-                `);
-                console.error(error);
-            }
-
-            input.disabled = false;
-            btn.disabled = false;
-            input.focus();
-            container.scrollTop = container.scrollHeight;
         }
 
         // ==========================================
@@ -2277,6 +2418,13 @@
         }
 
         async function abrirExpediente(pacienteId) {
+            // --- NUEVO: Guardar en historial de vistos ---
+            let vistos = JSON.parse(localStorage.getItem('expedientes_vistos') || '[]');
+            vistos = vistos.filter(id => id !== pacienteId);
+            vistos.unshift(pacienteId);
+            localStorage.setItem('expedientes_vistos', JSON.stringify(vistos.slice(0, 4)));
+            renderizarRecientesInicio(); 
+
             const paciente = pacientesCache.find(p => p.id === pacienteId);
             
             if(!paciente) {
@@ -2674,6 +2822,89 @@
             document.getElementById('customFieldsContainer').innerHTML = '';
         });
 
+        // ==========================================
+        // 11. FUNCIONES BOTÓN FLOTANTE LucIA
+        // ==========================================
+        function toggleLuciaChat() {
+            const panel = document.getElementById('luciaChatPanel');
+            const bubble = document.getElementById('luciaWelcomeBubble');
+            
+            // Ocultar el globito en cuanto le dan clic al robot
+            if (bubble) {
+                bubble.style.display = 'none';
+            }
+
+            if (panel.style.display === 'flex') {
+                panel.style.display = 'none';
+            } else {
+                panel.style.display = 'flex';
+                document.getElementById('lucia-input-flotante').focus();
+            }
+        }
+
+        async function enviarMensajeLucIAFlotante() {
+            const input = document.getElementById('lucia-input-flotante');
+            const mensaje = input.value.trim();
+            if (!mensaje) return;
+
+            const body = document.getElementById('lucia-chat-body');
+            
+            // 1. Mostrar mensaje del usuario
+            body.insertAdjacentHTML('beforeend', `
+                <div class="text-end mb-2"><div class="d-inline-block bg-primary text-white p-2 rounded shadow-sm">${mensaje}</div></div>
+            `);
+            
+            input.value = '';
+            body.scrollTop = body.scrollHeight;
+
+            // 2. Mostrar estado de "Pensando..."
+            const loadingId = 'loading-fab-' + Date.now();
+            body.insertAdjacentHTML('beforeend', `
+                <div class="text-start mb-2" id="${loadingId}">
+                    <div class="d-inline-block bg-white border p-2 rounded shadow-sm">
+                        <i class="bi bi-robot text-primary"></i> <span class="spinner-grow spinner-grow-sm"></span> Pensando...
+                    </div>
+                </div>
+            `);
+            body.scrollTop = body.scrollHeight;
+
+            try {
+                const { data: { session } } = await spb.auth.getSession();
+                if (!session) throw new Error("Sin sesión activa");
+
+                // 3. LLAMADA REAL A TU FASTAPI (main.py)
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}` 
+                    },
+                    body: JSON.stringify({ mensaje: mensaje })
+                });
+
+                const data = await response.json();
+                document.getElementById(loadingId).remove(); // Quitar bolitas de carga
+
+                if (data.status === 'success') {
+                    body.insertAdjacentHTML('beforeend', `
+                        <div class="text-start mb-2">
+                            <div class="d-inline-block bg-white border p-2 rounded shadow-sm">
+                                <i class="bi bi-robot text-primary"></i> ${data.respuesta.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `);
+                } else {
+                    throw new Error(data.detail || "Error en el servidor");
+                }
+            } catch (error) {
+                const el = document.getElementById(loadingId);
+                if (el) {
+                    el.innerHTML = `<div class="d-inline-block bg-danger-subtle text-danger border border-danger-subtle p-2 rounded shadow-sm"><i class="bi bi-exclamation-triangle"></i> Error al conectar con LucIA.</div>`;
+                }
+                console.error(error);
+            }
+            body.scrollTop = body.scrollHeight;
+        }
     </script>
 </body>
 </html>
