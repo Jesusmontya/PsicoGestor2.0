@@ -34,7 +34,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=[
+        "https://psicogestor.devgroupstudio.xyz", # Pon tu subdominio real aquí
+        "http://localhost:8000",                # Para que sigas pudiendo probar local
+        "*"                                     # O deja el "*" si quieres evitar problemas por ahora
+    ], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
