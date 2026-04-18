@@ -35,10 +35,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://psicogestor.devgroupstudio.xyz", # Pon tu subdominio real aquí
-        "http://localhost:8000",                # Para que sigas pudiendo probar local
-        "*"                                     # O deja el "*" si quieres evitar problemas por ahora
-    ], 
+        "https://psicogestor.devgroupstudio.xyz",
+        "http://localhost:8000",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,8 +63,8 @@ async def root():
 # ==========================================
 
 class CitaCreate(BaseModel):
-    paciente: str # UUID del paciente
-    profesional_id: str # UUID del psicólogo
+    paciente: str
+    profesional_id: str
     fecha: str
     hora: str
     tipo: str
@@ -104,6 +104,9 @@ class PlantillaCreate(BaseModel):
     nombre_plantilla: str
     campos: List[Dict[str, Any]]
 
+class SoapTextoLibre(BaseModel):
+    texto_libre: str
+
 # ==========================================
 # 4. RUTAS DE LA API (ENDPOINTS JSON)
 # ==========================================
@@ -141,10 +144,9 @@ async def crear_plantilla(plantilla: PlantillaCreate) -> dict[str, Any]:
             "nombre_plantilla": plantilla.nombre_plantilla,
             "campos": plantilla.campos
         }).execute()
-        
         return {
-            "status": "success", 
-            "mensaje": "Plantilla guardada correctamente", 
+            "status": "success",
+            "mensaje": "Plantilla guardada correctamente",
             "data": respuesta.data
         }
     except Exception as e:
@@ -155,7 +157,7 @@ async def obtener_plantillas(profesional_id: str) -> dict[str, Any]:
     try:
         respuesta = supabase.table("plantillas").select("*").eq("profesional_id", profesional_id).execute()
         return {
-            "status": "success", 
+            "status": "success",
             "plantillas": respuesta.data
         }
     except Exception as e:
@@ -165,10 +167,7 @@ async def obtener_plantillas(profesional_id: str) -> dict[str, Any]:
 @app.post("/api/citas")
 async def crear_cita(cita: CitaCreate) -> dict[str, Any]:
     try:
-        # Combinar fecha y hora para el formato TIMESTAMPTZ de Supabase
-        # Asumimos zona horaria de Culiacán (-07:00)
         fecha_hora_iso = f"{cita.fecha}T{cita.hora}:00-07:00"
-
         payload = {
             "paciente_id": cita.paciente,
             "profesional_id": cita.profesional_id,
@@ -179,14 +178,11 @@ async def crear_cita(cita: CitaCreate) -> dict[str, Any]:
             "sync_google": cita.sync,
             "estado": "programada"
         }
-
-        # GUARDAR EN LA BASE DE DATOS
         respuesta = supabase.table('citas').insert(payload).execute()
-        
         return {
-            "status": "success", 
+            "status": "success",
             "mensaje": "Cita guardada correctamente",
-            "datos": respuesta.data 
+            "datos": respuesta.data
         }
     except Exception as e:
         print(f"Error al crear cita: {e}")
@@ -196,7 +192,7 @@ async def crear_cita(cita: CitaCreate) -> dict[str, Any]:
 async def analizar_sesion(sesion: SesionAnalisis) -> dict[str, Any]:
     if not ai_client:
         raise HTTPException(status_code=500, detail="Falta la llave de Gemini API")
-    
+
     prompt_sistema = """
     Eres un asistente clínico para psicólogos. Analiza esta sesión SOAP.
     Devuelve ÚNICAMENTE un JSON con esta estructura exacta:
@@ -216,7 +212,7 @@ async def analizar_sesion(sesion: SesionAnalisis) -> dict[str, Any]:
             contents=texto_analizar,
             config=types.GenerateContentConfig(
                 system_instruction=prompt_sistema,
-                response_mime_type="application/json", 
+                response_mime_type="application/json",
             )
         )
         analisis_json = json.loads(response.text)
@@ -234,19 +230,19 @@ async def analizar_sesion(sesion: SesionAnalisis) -> dict[str, Any]:
 async def chat_oraculo(chat: MensajeChat, request: Request) -> dict[str, Any]:
     if not ai_client:
         raise HTTPException(status_code=500, detail="Falta la llave de Gemini API en el .env")
-    
+
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Acceso denegado: Falta el token de seguridad")
-    
+
     token = auth_header.split(" ")[1]
     supabase_usuario: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
     supabase_usuario.postgrest.auth(token)
-    
+
     try:
         pacientes_db = supabase_usuario.table('pacientes').select('id, nombre, motivo_consulta, terapia_previa').execute()
         sesiones_db = supabase_usuario.table('sesiones').select('paciente_id, fecha, via, subjetivo, objetivo, analisis, plan').order('fecha', desc=True).execute()
-        
+
         sesiones_agrupadas = {}
         if sesiones_db.data:
             for sesion in sesiones_db.data:
@@ -268,7 +264,7 @@ async def chat_oraculo(chat: MensajeChat, request: Request) -> dict[str, Any]:
                 contexto_pacientes += "\n"
         else:
             contexto_pacientes += "No hay pacientes registrados.\n"
-            
+
     except Exception as e:
         contexto_pacientes = "Error al leer base de datos clínica."
 
@@ -296,22 +292,70 @@ async def chat_oraculo(chat: MensajeChat, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# --- RUTA DE SUSCRIPCIÓN DE CALENDARIO (CON MODO DEBUG) ---
+# --- SOAP AUTOMÁTICO ---
+@app.post("/api/soap/estructurar")
+async def estructurar_soap(payload: SoapTextoLibre, request: Request) -> dict[str, Any]:
+    if not ai_client:
+        raise HTTPException(status_code=500, detail="Falta la llave de Gemini API en el .env")
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Acceso denegado: Falta el token de seguridad")
+
+    texto = payload.texto_libre.strip()
+    if not texto:
+        raise HTTPException(status_code=400, detail="El texto no puede estar vacío")
+
+    prompt_sistema = """
+Eres un asistente clínico experto en psicología.
+A partir del texto libre de notas de sesión que recibirás, extrae y organiza la información en formato SOAP.
+
+Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta, sin texto adicional, sin markdown, sin explicaciones:
+{
+  "s": "Subjetivo: lo que refiere el paciente (síntomas, quejas, sentimientos expresados por él/ella)",
+  "o": "Objetivo: lo que el clínico observa (comportamiento, actitud, lenguaje no verbal, puntualidad, apariencia)",
+  "a": "Análisis: evaluación clínica, hipótesis diagnóstica, interpretación del estado actual",
+  "p": "Plan: próximos pasos, tareas para el paciente, técnicas a aplicar, frecuencia de sesiones"
+}
+
+Si alguna sección no tiene información suficiente en el texto, escribe una oración breve indicando que no se mencionó en la nota.
+"""
+
+    try:
+        response = ai_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=texto,
+            config=types.GenerateContentConfig(
+                system_instruction=prompt_sistema,
+                response_mime_type="application/json",
+            )
+        )
+        raw = response.text.strip().replace("```json", "").replace("```", "").strip()
+        soap = json.loads(raw)
+        for key in ("s", "o", "a", "p"):
+            if key not in soap:
+                soap[key] = "Sin información suficiente en la nota."
+        return {"status": "success", "soap": soap}
+
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=500, detail="Gemini no devolvió un JSON válido. Intenta de nuevo.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {str(e)}")
+
+
+# --- RUTA DE SUSCRIPCIÓN DE CALENDARIO ---
 @app.get("/api/calendario/{profesional_id}/psicogestor.ics")
 async def feed_calendario(profesional_id: str, request: Request):
     try:
         print(f"--- SOLICITANDO CALENDARIO PARA: {profesional_id} ---")
-        
-        # 1. Consultar citas
+
         respuesta = supabase.table('citas').select('*, pacientes(nombre)').eq('profesional_id', profesional_id).eq('estado', 'programada').execute()
         citas = respuesta.data
-        
+
         print(f"CITAS ENCONTRADAS: {len(citas)}")
         if len(citas) == 0:
             print("OJO: Supabase regresó 0 citas. Revisa si hay citas 'programadas' o si la llave bloquea la lectura (RLS).")
 
-        # 2. Construir la URL base para que el iPhone sepa de dónde viene el calendario
-        #    Usamos el host real de la petición para que funcione tanto en Render como en local
         base_url = str(request.base_url).rstrip("/")
         webcal_url = base_url.replace("https://", "webcal://").replace("http://", "webcal://")
 
@@ -324,19 +368,17 @@ async def feed_calendario(profesional_id: str, request: Request):
             "X-WR-CALNAME:Psicogestor - Agenda",
             "X-WR-TIMEZONE:UTC",
             f"X-WR-CALID:{webcal_url}/api/calendario/{profesional_id}/psicogestor.ics",
-            "REFRESH-INTERVAL;VALUE=DURATION:PT15M", 
-            "X-PUBLISHED-TTL:PT15M" 
+            "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+            "X-PUBLISHED-TTL:PT15M"
         ]
 
         for cita in citas:
             print(f"Procesando cita ID: {cita.get('id')}")
-            # Formatear fechas
             fecha_dt = datetime.fromisoformat(cita['fecha_hora'].replace('Z', '+00:00'))
             start = fecha_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
             end = (fecha_dt.astimezone(timezone.utc) + timedelta(hours=1)).strftime("%Y%m%dT%H%M%SZ")
             stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-            
-            # Extraer paciente con cuidado extremo
+
             paciente_data = cita.get('pacientes')
             if isinstance(paciente_data, list) and len(paciente_data) > 0:
                 nombre_p = paciente_data[0].get('nombre', 'Paciente')
@@ -366,7 +408,7 @@ async def feed_calendario(profesional_id: str, request: Request):
         print("--- CALENDARIO GENERADO CON ÉXITO ---")
 
         return Response(
-            content=calendar_str, 
+            content=calendar_str,
             media_type="text/calendar",
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
