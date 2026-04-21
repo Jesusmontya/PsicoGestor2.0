@@ -224,35 +224,122 @@ footer{background:var(--white);border-top:1px solid var(--border);padding:3.5rem
 .reveal.visible{opacity:1;transform:translateY(0)}
 
 /* -------------------------------------------
-   NUEVOS ESTILOS PARA MODAL Y SMART PORTAL
+   ESTILOS MODAL Y SMART PORTAL (originales)
 ------------------------------------------- */
-.d-none { display: none !important; }
+.d-none{display:none!important}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:2000;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 0.3s}
+.modal-overlay.show{display:flex;opacity:1}
+.login-modal{background:var(--white);padding:2.5rem;border-radius:16px;width:90%;max-width:400px;box-shadow:var(--shadow-xl);transform:translateY(-20px);transition:transform 0.3s;position:relative}
+.modal-overlay.show .login-modal{transform:translateY(0)}
+.close-btn{position:absolute;top:15px;right:15px;background:none;border:none;font-size:1.5rem;color:var(--muted);cursor:pointer}
+.login-form .form-control{width:100%;padding:0.8rem 1rem;border-radius:8px;border:1px solid var(--border);margin-bottom:1rem;font-family:inherit;font-size:0.95rem}
+.login-form .form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(58,123,213,0.1)}
+.user-dash-bg{background:var(--bg);min-height:100vh;padding-top:8rem;padding-bottom:4rem}
+.welcome-header{margin-bottom:2.5rem}
+.welcome-header h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,4vw,3rem);color:var(--text)}
+.dash-widgets{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:4rem}
+.dash-widget{background:var(--white);border-radius:14px;padding:1.75rem;border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.dash-widget h3{font-size:1.1rem;font-weight:700;color:var(--primary);margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.news-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.news-card{background:var(--white);border-radius:14px;padding:1.5rem;border:1px solid var(--border);transition:all 0.3s}
+.news-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md);border-color:var(--primary)}
+.news-card h4{font-size:1rem;font-weight:600;margin-bottom:0.5rem;color:var(--text)}
+.news-card p{font-size:0.85rem;color:var(--muted);line-height:1.6}
+.news-badge{display:inline-block;padding:3px 10px;background:rgba(58,123,213,0.1);color:var(--primary);border-radius:100px;font-size:0.7rem;font-weight:700;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.5px}
 
-/* Modal de Login */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
-.modal-overlay.show { display: flex; opacity: 1; }
-.login-modal { background: var(--white); padding: 2.5rem; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: var(--shadow-xl); transform: translateY(-20px); transition: transform 0.3s; position: relative; }
-.modal-overlay.show .login-modal { transform: translateY(0); }
-.close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: var(--muted); cursor: pointer; }
-.login-form .form-control { width: 100%; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; font-family: inherit; font-size: 0.95rem; }
-.login-form .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(58,123,213,0.1); }
+/* ============================================
+   RESPONSIVE MÓVIL — AÑADIDO
+============================================ */
 
-/* Dashboard Bienvenido (Smart Portal) */
-.user-dash-bg { background: var(--bg); min-height: 100vh; padding-top: 8rem; padding-bottom: 4rem; }
-.welcome-header { margin-bottom: 2.5rem; }
-.welcome-header h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 4vw, 3rem); color: var(--text); }
-.dash-widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 4rem; }
-.dash-widget { background: var(--white); border-radius: 14px; padding: 1.75rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
-.dash-widget h3 { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
-.news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-.news-card { background: var(--white); border-radius: 14px; padding: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
-.news-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--primary); }
-.news-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
-.news-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
-.news-badge { display: inline-block; padding: 3px 10px; background: rgba(58,123,213,0.1); color: var(--primary); border-radius: 100px; font-size: 0.7rem; font-weight: 700; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
+/* --- Hamburguesa navbar --- */
+.nav-hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--text);font-size:1.35rem;line-height:1}
+.nav-mobile-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(20px);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:2rem;opacity:0;transition:opacity .25s}
+.nav-mobile-menu.open{display:flex;opacity:1}
+.nav-mobile-menu a,.nav-mobile-menu button.btn-nav-mobile-link{color:var(--text);text-decoration:none;font-size:1.25rem;font-weight:600;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
+.nav-mobile-menu .btn-nav{font-size:1rem;padding:.75rem 2rem}
+.nav-mobile-close{position:absolute;top:1.25rem;right:1.5rem;background:none;border:none;font-size:1.6rem;cursor:pointer;color:var(--muted)}
 
-@media(max-width: 900px) { .news-grid { grid-template-columns: repeat(2, 1fr); } }
-@media(max-width: 768px) { .dash-widgets { grid-template-columns: 1fr; } .news-grid { grid-template-columns: 1fr; } }
+@media(max-width:860px){
+  /* Navbar */
+  .navbar{padding:.85rem 1.25rem}
+  .nav-links{display:none}
+  .nav-hamburger{display:flex;align-items:center;justify-content:center}
+
+  /* Hero */
+  .hero{padding:7rem 1.25rem 4rem}
+  h1.hero-title{font-size:clamp(2rem,8vw,3rem)}
+  .hero-sub{font-size:.95rem}
+  .hero-ctas{flex-direction:column;align-items:stretch}
+  .btn-cta-primary,.btn-cta-secondary{justify-content:center;font-size:.95rem;padding:.8rem 1.5rem}
+  .trust-sep{display:none}
+  .hero-trust{gap:.75rem}
+  .hero-mockup-wrap{margin-top:3rem}
+  .mockup-body{grid-template-columns:1fr}
+  .mock-sidebar{display:none}
+  .mock-kpis{grid-template-columns:repeat(2,1fr)}
+
+  /* Stats */
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:1.5rem}
+
+  /* Features */
+  .features-grid{grid-template-columns:1fr}
+  .py-xl{padding:4rem 0}
+
+  /* LucIA */
+  .lucia-grid{grid-template-columns:1fr;gap:2.5rem}
+
+  /* Seguridad */
+  .seg-grid{grid-template-columns:repeat(2,1fr)}
+
+  /* Precios */
+  .urgencia-bar{flex-direction:column;align-items:flex-start;padding:1rem 1.25rem}
+  .pricing-grid{grid-template-columns:1fr;max-width:480px}
+  .price-card.featured{margin-top:1rem}
+  .garantia-box{padding:1.5rem;gap:1rem}
+  .garantia-box .gicon{font-size:2.2rem}
+
+  /* Testimonios */
+  .test-grid{grid-template-columns:1fr}
+
+  /* Footer */
+  .foot-grid{grid-template-columns:1fr 1fr;gap:2rem}
+  .foot-bottom{flex-direction:column;align-items:flex-start}
+  .foot-badges{gap:.5rem}
+
+  /* Dashboard */
+  .dash-widgets{grid-template-columns:1fr}
+  .news-grid{grid-template-columns:1fr}
+
+  /* FAQ */
+  .faq-wrap{margin-top:2rem}
+  .faq-q{font-size:.88rem}
+
+  /* CTA Final */
+  .cta-final-content{padding:4rem 1.25rem}
+  .cta-final-content h2{font-size:clamp(1.6rem,6vw,2.2rem)}
+  .cta-final-content>div{flex-direction:column}
+  .btn-cta-white,.btn-cta-outline-white{justify-content:center;width:100%}
+
+  /* WA float sube un poco para no tapar contenido */
+  .wa-float{bottom:20px;right:16px;width:48px;height:48px;font-size:1.3rem}
+}
+
+@media(max-width:480px){
+  .seg-grid{grid-template-columns:1fr}
+  .foot-grid{grid-template-columns:1fr}
+  .stats-grid{grid-template-columns:repeat(2,1fr)}
+  .mock-kpis{grid-template-columns:repeat(2,1fr)}
+  h2.section-title{font-size:1.6rem}
+  .pricing-grid{padding:0 .25rem}
+  .price-card{padding:1.75rem 1.25rem}
+  .urgencia-bar{padding:.875rem 1rem}
+  .tnum{font-size:1.1rem}
+  .tblock{min-width:42px;padding:5px 9px}
+  .garantia-box{flex-direction:column}
+}
+/* ============================================
+   FIN RESPONSIVE
+============================================ */
 </style>
 </head>
 <body>
@@ -271,7 +358,21 @@ footer{background:var(--white);border-top:1px solid var(--border);padding:3.5rem
       <button onclick="openLoginModal()" class="btn-nav">Iniciar Sesión →</button>
     </div>
   </div>
+  <!-- Hamburguesa solo visible en móvil -->
+  <button class="nav-hamburger" onclick="openMobileMenu()" aria-label="Menú"><i class="bi bi-list"></i></button>
 </nav>
+
+<!-- Menú móvil overlay -->
+<div class="nav-mobile-menu" id="navMobileMenu">
+  <button class="nav-mobile-close" onclick="closeMobileMenu()"><i class="bi bi-x-lg"></i></button>
+  <a href="#funcionalidades" onclick="closeMobileMenu()">Funcionalidades</a>
+  <a href="#lucia" onclick="closeMobileMenu()">LucIA IA</a>
+  <a href="#seguridad" onclick="closeMobileMenu()">Seguridad</a>
+  <a href="#precios" onclick="closeMobileMenu()">Precios</a>
+  <div id="nav-mobile-auth-section">
+    <button onclick="closeMobileMenu();openLoginModal();" class="btn-nav">Iniciar Sesión →</button>
+  </div>
+</div>
 
 <div id="guest-hero">
   <section class="hero">
@@ -480,6 +581,7 @@ footer{background:var(--white);border-top:1px solid var(--border);padding:3.5rem
   </div>
 </section>
 
+<!-- SECCIÓN PRECIOS — se oculta si el usuario tiene plan Pro -->
 <section id="precios" class="pricing-bg py-xl">
   <div class="container" style="text-align:center;">
     <div class="reveal">
@@ -688,18 +790,61 @@ function toggleFaq(btn){const ans=btn.nextElementSibling,open=btn.classList.cont
 (function(){let dl=parseInt(localStorage.getItem('psico_dl')||0);if(!dl||dl<Date.now()){dl=Date.now()+48*3600*1000;localStorage.setItem('psico_dl',dl)}function tick(){const diff=Math.max(0,dl-Date.now());document.getElementById('timer-h').textContent=String(Math.floor(diff/3600000)).padStart(2,'0');document.getElementById('timer-m').textContent=String(Math.floor((diff%3600000)/60000)).padStart(2,'0');document.getElementById('timer-s').textContent=String(Math.floor((diff%60000)/1000)).padStart(2,'0')}tick();setInterval(tick,1000)})();
 document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();window.scrollTo({top:t.offsetTop-75,behavior:'smooth'})}}));
 
+/* --- Menú móvil --- */
+function openMobileMenu(){
+  const m=document.getElementById('navMobileMenu');
+  m.classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeMobileMenu(){
+  const m=document.getElementById('navMobileMenu');
+  m.classList.remove('open');
+  document.body.style.overflow='';
+}
+
 /* --------------------------------------------------------
-   LÓGICA SUPABASE Y SMART PORTAL
+   LÓGICA SUPABASE Y SMART PORTAL (original intacta)
 -------------------------------------------------------- */
 const SUPABASE_URL = 'https://adbklyrecnyryusktftr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYmtseXJlY255cnl1c2t0ZnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjQ5MTIsImV4cCI6MjA5MDg0MDkxMn0.sK3cbVoRX1PjQx9Me-9PTFXq0wEpWB1JR7EuVby4Gpw';
 const spb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* -------------------------------------------------------
+   OCULTAR SECCIÓN DE PRECIOS PARA USUARIOS CON PLAN PRO
+   Se consulta la tabla `profiles` buscando el campo
+   `plan` (o `subscription`). Ajusta el nombre de la
+   tabla/columna si difiere en tu schema de Supabase.
+------------------------------------------------------- */
+async function hidePricingIfPro(userId) {
+  try {
+    // Intentamos leer el plan del perfil del usuario
+    const { data, error } = await spb
+      .from('profiles')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+
+    // Si no hay error y el plan es 'pro' (o 'Pro', 'PRO'), ocultamos precios
+    if (!error && data && ['pro','Pro','PRO','premium','Premium'].includes(data.plan)) {
+      const pricingSection = document.getElementById('precios');
+      if (pricingSection) {
+        pricingSection.style.display = 'none';
+        // También quitamos el enlace "Precios" del navbar desktop y móvil
+        document.querySelectorAll('a[href="#precios"]').forEach(el => el.style.display = 'none');
+      }
+    }
+  } catch(e) {
+    // Si la tabla no existe o hay error, simplemente no ocultamos nada
+    console.warn('No se pudo verificar el plan:', e);
+  }
+}
 
 async function checkSession() {
     const { data: { session } } = await spb.auth.getSession();
     const guestHero = document.getElementById('guest-hero');
     const userDash = document.getElementById('user-dashboard');
     const navAuth = document.getElementById('nav-auth-section');
+    const navMobileAuth = document.getElementById('nav-mobile-auth-section');
 
     if (session) {
         // MODO USUARIO AUTENTICADO
@@ -709,7 +854,7 @@ async function checkSession() {
         const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
         document.getElementById('user-welcome-name').innerText = `Hola, Dr. ${name}`;
         
-        // Actualizar Navbar
+        // Actualizar Navbar desktop
         navAuth.innerHTML = `
             <div style="display:flex; align-items:center; gap:15px;">
                 <span style="font-weight:600; font-size:0.9rem; color:var(--text); display:none;">Dr. ${name}</span>
@@ -717,6 +862,16 @@ async function checkSession() {
                 <button onclick="doLogout()" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer; margin-left:5px;" title="Cerrar Sesión"><i class="bi bi-box-arrow-right"></i></button>
             </div>
         `;
+        // Actualizar Navbar móvil
+        if(navMobileAuth) navMobileAuth.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;gap:1rem;">
+                <a href="dashboard.html" class="btn-nav" onclick="closeMobileMenu()">Ir al Dashboard →</a>
+                <button onclick="closeMobileMenu();doLogout();" style="background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;">Cerrar Sesión <i class="bi bi-box-arrow-right"></i></button>
+            </div>
+        `;
+
+        // Verificar plan y ocultar precios si es Pro
+        hidePricingIfPro(session.user.id);
         
         // Cargar cita en el mini-dashboard
         loadNextAppointment(session.user.id);
@@ -725,6 +880,7 @@ async function checkSession() {
         guestHero.classList.remove('d-none');
         userDash.classList.add('d-none');
         navAuth.innerHTML = `<button onclick="openLoginModal()" class="btn-nav">Iniciar Sesión →</button>`;
+        if(navMobileAuth) navMobileAuth.innerHTML = `<button onclick="closeMobileMenu();openLoginModal();" class="btn-nav">Iniciar Sesión →</button>`;
     }
 }
 
@@ -796,7 +952,6 @@ async function doLogin() {
         setTimeout(() => {
             closeLoginModal();
             checkSession();
-            // Reset button state for future
             btn.innerHTML = 'Ingresar al Sistema';
             btn.style.background = 'var(--grad)';
             btn.style.boxShadow = '0 4px 16px rgba(58,123,213,0.35)';
@@ -815,617 +970,4 @@ async function doLogout() {
 checkSession();
 </script>
 </body>
-</html>    SUPABASE_KEY = "llave-dummy"
-
-app = FastAPI(
-    title="Psicogestor API",
-    description="Backend Psicogestor 2.0 — Dev Group Studio",
-    version="2.0.1"
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Clientes globales
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
-
-# ==========================================
-# 2. FRONTEND ESTÁTICO
-# ==========================================
-# Asegúrate de que exista la carpeta public/ con tus HTML
-app.mount("/app", StaticFiles(directory="public", html=True), name="public")
-
-@app.get("/")
-async def root():
-    # En lugar de Redirect, mandamos el archivo físico
-    # Esto hace que al entrar a psicogestor.devgroupstudio.xyz
-    # se vea el index sin cambiar la URL a /app/login.html
-    return FileResponse("public/index.html")
-# ==========================================
-# 3. MODELOS PYDANTIC
-# ==========================================
-
-class CitaCreate(BaseModel):
-    paciente: str
-    profesional_id: str
-    fecha: str
-    hora: str
-    tipo: str
-    notas: str
-    sync: bool
-    modalidad: str = "presencial"
-
-class SesionAnalisis(BaseModel):
-    paciente_id: str
-    via: str
-    s: str
-    o: str
-    a: str
-    p: str
-
-class MensajeChat(BaseModel):
-    mensaje: str
-
-class PacienteNuevo(BaseModel):
-    profesional_id: str
-    nombre: str
-    fecha_nacimiento: str
-    genero: str
-    estado_civil: str
-    ocupacion: str
-    telefono_whatsapp: str
-    email: str | None = None
-    domicilio: str | None = None
-    contacto_emergencia_nombre: str
-    contacto_emergencia_tel: str
-    motivo_consulta: str
-    terapia_previa: bool = False
-    notas_alergias_meds: str | None = None
-
-class PlantillaCreate(BaseModel):
-    profesional_id: str
-    nombre_plantilla: str
-    campos: List[Dict[str, Any]]
-
-class SoapTextoLibre(BaseModel):
-    texto: str  # IMPORTANTE: debe llamarse "texto" para coincidir con el frontend
-
-# ==========================================
-# 4. HELPER: VERIFICAR USUARIO Y PLAN
-# ==========================================
-
-def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
-    """
-    Verifica el token JWT de Supabase.
-    Devuelve el user_id si es válido.
-    Lanza HTTPException si el token es inválido o el plan no es suficiente.
-    """
-    try:
-        user_response = supabase.auth.get_user(token)
-        user_id = user_response.user.id
-    except Exception:
-        raise HTTPException(status_code=401, detail="Token inválido o sesión expirada.")
-
-    if plan_requerido == "pro":
-        try:
-            perfil = supabase.table("perfiles_profesionales") \
-                .select("tipo_plan") \
-                .eq("id", user_id) \
-                .execute()
-
-            if not perfil.data:
-                raise HTTPException(status_code=404, detail="Perfil profesional no encontrado.")
-
-            plan_db = str(perfil.data[0].get("tipo_plan", "")).strip().lower()
-            print(f"[DEBUG] Usuario {user_id} → plan detectado: '{plan_db}'")
-
-            if plan_db != "pro":
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Esta función requiere Plan Pro. Tu plan actual: '{plan_db}'. Actualiza en Configuración."
-                )
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Error al verificar plan: {str(e)}")
-
-    return user_id
-
-# ==========================================
-# 5. ENDPOINTS — PACIENTES
-# ==========================================
-
-@app.post("/api/pacientes")
-async def registrar_paciente(paciente: PacienteNuevo, request: Request):
-    # Verificamos que sea un usuario real (aunque sea plan gratis)
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
-    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
-    
-    try:
-        # Forzamos que el profesional_id sea el del token, no el que manden en el JSON
-        datos = paciente.model_dump()
-        datos["profesional_id"] = user_id
-        
-        respuesta = supabase.table("pacientes").insert(datos).execute()
-        return {"status": "success", "mensaje": "Expediente creado", "datos": respuesta.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.get("/api/pacientes")
-async def listar_pacientes(request: Request):
-    # Ya no ocupamos doctor_id en la URL, lo sacamos del Token
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
-    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
-    
-    try:
-        respuesta = supabase.table("pacientes").select("*").eq("profesional_id", user_id).execute()
-        return {"status": "success", "pacientes": respuesta.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-# ==========================================
-# 6. ENDPOINTS — PLANTILLAS
-# ==========================================
-
-@app.post("/api/plantillas")
-async def crear_plantilla(plantilla: PlantillaCreate, request: Request) -> dict[str, Any]:
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
-    user_id = verificar_token_y_plan(token, plan_requerido="pro") 
-    
-    try:
-        respuesta = supabase.table("plantillas").insert({
-            "profesional_id": user_id, 
-            "nombre_plantilla": plantilla.nombre_plantilla,
-            "campos": plantilla.campos
-        }).execute()
-        return {"status": "success", "mensaje": "Plantilla guardada", "data": respuesta.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-@app.get("/api/plantillas")
-async def obtener_plantillas(request: Request) -> dict[str, Any]:
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
-    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
-    
-    try:
-        respuesta = supabase.table("plantillas").select("*").eq("profesional_id", user_id).execute()
-        return {"status": "success", "plantillas": respuesta.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-# ==========================================
-# 7. ENDPOINTS — CITAS Y SESIONES
-# ==========================================
-
-@app.post("/api/citas")
-async def crear_cita(cita: CitaCreate, request: Request) -> dict[str, Any]:
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
-    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
-
-    try:
-        fecha_hora_iso = f"{cita.fecha}T{cita.hora}:00-07:00"
-        payload = {
-            "paciente_id": cita.paciente,
-            "profesional_id": user_id,
-            "fecha_hora": fecha_hora_iso,
-            "tipo_consulta": cita.tipo,
-            "modalidad": cita.modalidad,
-            "notas_previas": cita.notas,
-            "sync_google": cita.sync,
-            "estado": "programada"
-        }
-        respuesta = supabase.table("citas").insert(payload).execute()
-        return {"status": "success", "mensaje": "Cita guardada", "datos": respuesta.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/sesiones/analizar")
-async def analizar_sesion(sesion: SesionAnalisis) -> dict[str, Any]:
-    if not ai_client:
-        raise HTTPException(status_code=500, detail="Gemini API no configurada")
-
-    prompt_sistema = """
-Eres un asistente clínico para psicólogos. Analiza esta sesión SOAP.
-Devuelve ÚNICAMENTE un JSON con esta estructura exacta, sin markdown ni texto extra:
-{
-    "ia_resumen_ejecutivo": "Un párrafo de máximo 3 líneas.",
-    "ia_nube_conceptos": ["concepto1", "concepto2"],
-    "ia_puntaje_animo": 8,
-    "ia_puntaje_ansiedad": 4,
-    "ia_alerta_riesgo": false
-}
-"""
-    texto = f"S: {sesion.s}\nO: {sesion.o}\nA: {sesion.a}\nP: {sesion.p}"
-
-    modelos = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
-    for modelo in modelos:
-        try:
-            response = ai_client.models.generate_content(
-                model=modelo,
-                contents=texto,
-                config=types.GenerateContentConfig(
-                    system_instruction=prompt_sistema,
-                    response_mime_type="application/json",
-                )
-            )
-            analisis_json = json.loads(response.text)
-            return {"status": "success", "analisis": analisis_json}
-        except Exception as e:
-            err_str = str(e)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                continue
-            raise HTTPException(status_code=500, detail=f"Error IA: {err_str}")
-    raise HTTPException(status_code=429, detail="Cuota de Gemini agotada.")
-
-# ==========================================
-# 8. ENDPOINT — SOAP AUTOMÁTICO ✅ PRINCIPAL
-# ==========================================
-
-@app.post("/api/soap/estructurar")
-async def estructurar_soap(payload: SoapTextoLibre, request: Request) -> dict[str, Any]:
-    """
-    Recibe texto libre de notas de sesión y devuelve estructura SOAP.
-    Requiere Plan Pro.
-    Body JSON esperado: { "texto": "..." }
-    Header esperado: Authorization: Bearer <supabase_access_token>
-    """
-    if not ai_client:
-        raise HTTPException(status_code=500, detail="Gemini API no configurada. Revisa GEMINI_API_KEY en .env")
-
-    # Extraer token
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Se requiere Authorization: Bearer <token>")
-
-    token = auth_header.split(" ", 1)[1]
-
-    # Verificar usuario y plan Pro
-    user_id = verificar_token_y_plan(token, plan_requerido="pro")
-
-    # Validar texto
-    texto = payload.texto.strip()
-    if not texto:
-        raise HTTPException(status_code=400, detail="El campo 'texto' no puede estar vacío")
-
-    prompt_sistema = """
-Eres un asistente clínico experto en psicología.
-A partir del texto libre de notas de sesión que recibirás, extrae y organiza la información en formato SOAP.
-
-Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta, sin texto adicional, sin markdown, sin backticks:
-{
-  "s": "Subjetivo: lo que refiere el paciente en sus propias palabras",
-  "o": "Objetivo: lo que el clínico observa conductual y emocionalmente",
-  "a": "Análisis: evaluación clínica e interpretación diagnóstica",
-  "p": "Plan: próximos pasos, tareas y objetivos terapéuticos"
-}
-
-Si alguna sección no tiene información suficiente, indica: "No se menciona en la nota."
-"""
-
-    try:
-        print(f"[SOAP] Procesando nota para usuario {user_id}. Longitud: {len(texto)} chars")
-
-        # Modelos en orden de preferencia (fallback automático)
-        modelos_candidatos = [
-        "gemini-3.0-flash",
-        "gemini-2.5-flash",
-        "gemini-1.5-flash",
-        ]
-
-        response = None
-        ultimo_error = None
-
-        for modelo in modelos_candidatos:
-            try:
-                print(f"[SOAP] Intentando con modelo: {modelo}")
-                response = ai_client.models.generate_content(
-                    model=modelo,
-                    contents=texto,
-                    config=types.GenerateContentConfig(
-                        system_instruction=prompt_sistema,
-                        response_mime_type="application/json",
-                    )
-                )
-                print(f"[SOAP] ✅ Éxito con modelo: {modelo}")
-                break  # Si funciona, salir del loop
-            except Exception as e:
-                ultimo_error = e
-                err_str = str(e)
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                    print(f"[SOAP] ⚠️ Cuota agotada en {modelo}, probando siguiente...")
-                    continue  # Intentar con el siguiente modelo
-                else:
-                    # Error distinto a cuota — no tiene caso reintentar
-                    raise e
-
-        if response is None:
-            raise HTTPException(
-                status_code=429,
-                detail="Cuota de Gemini API agotada en todos los modelos disponibles. Activa facturación en https://ai.google.dev o espera unos minutos e intenta de nuevo."
-            )
-
-        raw = response.text.strip()
-
-        # Limpiar por si Gemini agrega markdown
-        if raw.startswith("```"):
-            partes = raw.split("```")
-            raw = partes[1] if len(partes) > 1 else raw
-            raw = raw.replace("json", "", 1).strip()
-
-        soap = json.loads(raw)
-
-        # Garantizar que todas las claves existen
-        for key in ("s", "o", "a", "p"):
-            if key not in soap or not soap[key]:
-                soap[key] = "No se menciona en la nota."
-
-        print(f"[SOAP] ✅ Estructurado correctamente para usuario {user_id}")
-        return {"status": "success", "soap": soap}
-
-    except HTTPException:
-        raise  # Re-lanzar HTTPExceptions sin modificar
-    except json.JSONDecodeError as e:
-        print(f"[SOAP] ❌ Error JSON: {response.text if response else 'sin respuesta'}")
-        raise HTTPException(status_code=500, detail=f"Error al parsear respuesta de IA: {str(e)}")
-    except Exception as e:
-        err_str = str(e)
-        print(f"[SOAP] ❌ Error general: {err_str}")
-        # Mensaje amigable para error de cuota
-        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-            raise HTTPException(
-                status_code=429,
-                detail="Cuota de Gemini API agotada. Activa facturación en https://aistudio.google.com o espera unos minutos."
-            )
-        raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {err_str}")
-
-# ==========================================
-# 9. ENDPOINT — CHAT LucIA
-# ==========================================
-
-@app.post("/api/chat")
-async def chat_lucia(chat: MensajeChat, request: Request) -> dict[str, Any]:
-    if not ai_client:
-        raise HTTPException(status_code=500, detail="Gemini API no configurada")
-
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Se requiere Authorization: Bearer <token>")
-
-    token = auth_header.split(" ", 1)[1]
-    user_id = verificar_token_y_plan(token, plan_requerido="pro")
-
-    # Cargar contexto clínico del profesional
-    try:
-        pacientes_db = supabase.table("pacientes") \
-            .select("id, nombre, motivo_consulta") \
-            .eq("profesional_id", user_id) \
-            .execute()
-
-        sesiones_db = supabase.table("sesiones") \
-            .select("paciente_id, fecha, subjetivo, analisis, plan") \
-            .eq("profesional_id", user_id) \
-            .order("fecha", desc=True) \
-            .limit(30) \
-            .execute()
-
-        sesiones_por_paciente: dict = {}
-        for s in (sesiones_db.data or []):
-            pid = s.get("paciente_id")
-            if pid not in sesiones_por_paciente:
-                sesiones_por_paciente[pid] = []
-            sesiones_por_paciente[pid].append(s)
-
-        contexto = "=== EXPEDIENTES CLÍNICOS ===\n\n"
-        for p in (pacientes_db.data or []):
-            pid = p.get("id")
-            contexto += f"PACIENTE: {p.get('nombre')}\n"
-            contexto += f"Motivo: {p.get('motivo_consulta')}\n"
-            notas = sesiones_por_paciente.get(pid, [])
-            for n in notas[:3]:
-                fecha = n.get("fecha", "")[:10]
-                contexto += f"  Sesión {fecha}: {n.get('subjetivo','—')} | Plan: {n.get('plan','—')}\n"
-            contexto += "\n"
-    except Exception as e:
-        contexto = f"Error al cargar expedientes: {str(e)}"
-
-    prompt_sistema = f"""
-Eres LucIA, asistente de IA clínica de Psicogestor.
-Hablas con un psicólogo profesional. Sé directo, clínico y conciso.
-No te presentes en cada mensaje. Responde con precisión.
-
-CONTEXTO DE EXPEDIENTES:
-{contexto}
-"""
-
-    modelos = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-    for modelo in modelos:
-        try:
-            response = ai_client.models.generate_content(
-                model=modelo,
-                contents=chat.mensaje,
-                config=types.GenerateContentConfig(system_instruction=prompt_sistema)
-            )
-            return {"status": "success", "respuesta": response.text}
-        except Exception as e:
-            err_str = str(e)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                print(f"[CHAT] Cuota agotada en {modelo}, probando siguiente...")
-                continue
-            raise HTTPException(status_code=500, detail=err_str)
-    raise HTTPException(
-        status_code=429,
-        detail="Cuota de Gemini API agotada. Activa facturacion en https://aistudio.google.com"
-    )
-
-# ==========================================
-# 10. ENDPOINT — CALENDARIO .ICS
-# ==========================================
-
-@app.get("/api/calendario/{profesional_id}/psicogestor.ics")
-async def feed_calendario(profesional_id: str, request: Request):
-    try:
-        respuesta = supabase.table("citas") \
-            .select("*, pacientes(nombre)") \
-            .eq("profesional_id", profesional_id) \
-            .eq("estado", "programada") \
-            .execute()
-        citas = respuesta.data or []
-
-        base_url = str(request.base_url).rstrip("/")
-        webcal_url = base_url.replace("https://", "webcal://").replace("http://", "webcal://")
-
-        ics = [
-            "BEGIN:VCALENDAR",
-            "VERSION:2.0",
-            "PRODID:-//Dev Group Studio//Psicogestor 2.0//ES",
-            "CALSCALE:GREGORIAN",
-            "METHOD:PUBLISH",
-            "X-WR-CALNAME:Psicogestor - Agenda",
-            "X-WR-TIMEZONE:UTC",
-            f"X-WR-CALID:{webcal_url}/api/calendario/{profesional_id}/psicogestor.ics",
-            "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
-            "X-PUBLISHED-TTL:PT15M"
-        ]
-
-        for cita in citas:
-            try:
-                fecha_dt = datetime.fromisoformat(cita["fecha_hora"].replace("Z", "+00:00"))
-                start = fecha_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-                end   = (fecha_dt.astimezone(timezone.utc) + timedelta(hours=1)).strftime("%Y%m%dT%H%M%SZ")
-                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
-                pac = cita.get("pacientes")
-                if isinstance(pac, list) and pac:
-                    nombre_p = pac[0].get("nombre", "Paciente")
-                elif isinstance(pac, dict):
-                    nombre_p = pac.get("nombre", "Paciente")
-                else:
-                    nombre_p = "Paciente"
-
-                modalidad = cita.get("modalidad") or "Presencial"
-                notas     = str(cita.get("notas_previas") or "Sin notas").replace("\n", "\\n").replace("\r", "")
-
-                ics += [
-                    "BEGIN:VEVENT",
-                    f"UID:cita_{cita['id']}@psicogestor.com",
-                    f"DTSTAMP:{stamp}",
-                    f"DTSTART:{start}",
-                    f"DTEND:{end}",
-                    f"SUMMARY:Sesión con {nombre_p}",
-                    f"DESCRIPTION:Modalidad: {modalidad}\\nNotas: {notas}",
-                    f"LOCATION:{modalidad}",
-                    "END:VEVENT"
-                ]
-            except Exception as e_cita:
-                print(f"[CAL] Error en cita {cita.get('id')}: {e_cita}")
-                continue
-
-        ics.append("END:VCALENDAR")
-
-        return Response(
-            content="\r\n".join(ics),
-            media_type="text/calendar",
-            headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0",
-                "Content-Disposition": "attachment; filename=psicogestor.ics"
-            }
-        )
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ==========================================
-# 11. ENDPOINTS — STRIPE / PAGOS
-# ==========================================
-
-@app.post("/api/crear-checkout")
-async def crear_checkout(request: Request):
-    # 1. EXTRAER TOKEN Y VERIFICAR SESIÓN
-    auth_header = request.headers.get("Authorization", "")
-    if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Debes iniciar sesión para realizar un pago.")
-    
-    token = auth_header.split(" ", 1)[1]
-    # Verificamos que el usuario existe (plan_requerido="gratis" porque aún no es Pro)
-    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
-
-    if not STRIPE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Stripe no configurado en el servidor.")
-
-    try:
-        base_url = str(request.base_url).rstrip("/")
-        session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
-            line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
-            mode="subscription",
-            success_url=f"{base_url}/app/dashboard.html?pago=exitoso",
-            cancel_url=f"{base_url}/app/checkout.html?pago=cancelado",
-            client_reference_id=user_id  # Usamos el ID verificado del token
-        )
-        return JSONResponse(content={"url": session.url})
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@app.post("/api/webhook/stripe")
-async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
-    if not STRIPE_WEBHOOK_SECRET:
-        raise HTTPException(status_code=500, detail="Falta webhook secret de Stripe.")
-
-    payload = await request.body()
-
-    try:
-        event = stripe.Webhook.construct_event(payload, stripe_signature, STRIPE_WEBHOOK_SECRET)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Payload inválido")
-    except stripe.error.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Firma inválida")
-
-    if event["type"] == "checkout.session.completed":
-        session      = event["data"]["object"]
-        usuario_id   = session.get("client_reference_id")
-        customer_id  = session.get("customer")
-        customer_email = session.get("customer_details", {}).get("email")
-
-        print(f"[STRIPE] ✅ Pago exitoso — usuario: {usuario_id} — email: {customer_email}")
-
-        if usuario_id:
-            try:
-                supabase.table("perfiles_profesionales").update({
-                    "tipo_plan": "pro",
-                    "stripe_customer_id": customer_id
-                }).eq("id", usuario_id).execute()
-                print(f"[STRIPE] Usuario {usuario_id} actualizado a PRO en Supabase.")
-            except Exception as e:
-                print(f"[STRIPE] ❌ Error actualizando Supabase: {e}")
-
-    elif event["type"] == "customer.subscription.deleted":
-        print("[STRIPE] Suscripción cancelada.")
-
-    return {"status": "success"}
-
-# ==========================================
-# 12. HEALTH CHECK
-# ==========================================
-
-@app.get("/api/health")
-async def health():
-    return {
-        "status": "ok",
-        "gemini": bool(ai_client),
-        "stripe": bool(STRIPE_SECRET_KEY),
-        "supabase": bool(SUPABASE_URL and SUPABASE_KEY)
-    }
+</html>
