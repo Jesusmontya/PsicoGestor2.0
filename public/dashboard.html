@@ -1063,8 +1063,25 @@ async function verificarSeguridad() {
 verificarSeguridad();
 
 async function cerrarSesion() {
-    await spb.auth.signOut();
-    window.location.replace('login.html');
+    try {
+        // 1. Cerramos la sesión en Supabase
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) throw error;
+
+        // 2. Limpiamos cualquier rastro en el almacenamiento local por seguridad
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // 3. Redirigimos a la página de inicio (landing)
+        // Usamos index.html porque es tu página principal de ventas
+        window.location.href = 'index.html';
+
+    } catch (error) {
+        console.error('Error al cerrar sesión:', error.message);
+        // Aun si hay error en Supabase, forzamos la salida al index
+        window.location.href = 'index.html';
+    }
 }
 
 // ==========================================
