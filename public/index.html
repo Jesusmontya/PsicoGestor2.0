@@ -1,818 +1,650 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Psicogestor 2.0 — Digitaliza tu Consulta Psicológica</title>
-<meta name="description" content="La plataforma todo-en-uno para psicólogos. Expedientes digitales, notas SOAP con IA, agenda y finanzas. Precio de lanzamiento $399 MXN/mes.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+import os
+import json
+from typing import Any, List, Dict
+from datetime import datetime, timedelta, timezone
+from fastapi import FastAPI, HTTPException, Request, Response, Header
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from supabase import create_client, Client
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv
+from fastapi.responses import FileResponse
+import stripe
 
-<style>
-:root{--primary:#3a7bd5;--primary-dk:#2c6dc5;--cyan:#00d2ff;--grad:linear-gradient(135deg,#3a7bd5,#00d2ff);--bg:#f4f6f9;--bg2:#eef1f6;--white:#ffffff;--border:rgba(0,0,0,0.07);--border2:rgba(0,0,0,0.04);--text:#2c3e50;--muted:#7f8c8d;--shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);--shadow-md:0 4px 14px rgba(0,0,0,0.08);--shadow-lg:0 12px 40px rgba(0,0,0,0.1);--shadow-xl:0 24px 64px rgba(0,0,0,0.12);--speed:0.22s}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;line-height:1.6}
-.navbar{position:fixed;top:0;left:0;right:0;z-index:1000;padding:1rem 2rem;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm);transition:padding var(--speed)}
-.navbar.scrolled{padding:.65rem 2rem}
-.nav-brand{font-family:'Playfair Display',serif;font-size:1.25rem;font-weight:700;color:var(--primary);text-decoration:none;display:flex;align-items:center;gap:10px}
-.nav-brand-icon{width:34px;height:34px;background:var(--grad);border-radius:9px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.05rem;flex-shrink:0}
-.nav-links{display:flex;align-items:center;gap:2rem}
-.nav-links a{color:var(--muted);text-decoration:none;font-size:.875rem;font-weight:500;transition:color var(--speed)}
-.nav-links a:hover{color:var(--primary)}
-.btn-nav{background:var(--grad);color:white;border:none;padding:.5rem 1.35rem;border-radius:8px;font-weight:600;font-size:.875rem;cursor:pointer;text-decoration:none;transition:opacity var(--speed),transform var(--speed),box-shadow var(--speed);box-shadow:0 2px 8px rgba(58,123,213,0.3);display:inline-block}
-.btn-nav:hover{opacity:.9;transform:translateY(-1px);color:white;box-shadow:0 4px 14px rgba(58,123,213,0.4)}
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:9rem 1.5rem 5rem;position:relative;overflow:hidden;background:var(--white)}
-.hero::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(58,123,213,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(58,123,213,0.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none}
-.hero-glow{position:absolute;top:-80px;left:50%;transform:translateX(-50%);width:800px;height:500px;background:radial-gradient(ellipse at center,rgba(58,123,213,0.1) 0%,transparent 65%);pointer-events:none}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(58,123,213,0.07);border:1px solid rgba(58,123,213,0.2);color:var(--primary);font-size:.78rem;font-weight:600;letter-spacing:.4px;text-transform:uppercase;padding:6px 16px;border-radius:100px;margin-bottom:2rem;animation:fadeUp .6s ease both}
-.badge-dot{width:7px;height:7px;background:var(--primary);border-radius:50%;animation:pulsedot 2s infinite}
-@keyframes pulsedot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
-h1.hero-title{font-family:'Playfair Display',serif;font-size:clamp(2.4rem,5.5vw,4.2rem);line-height:1.12;font-weight:900;color:var(--text);max-width:780px;margin:0 auto 1.4rem;animation:fadeUp .6s .08s ease both}
-.gradient-text{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-style:italic}
-.hero-sub{font-size:1.1rem;color:var(--muted);max-width:540px;margin:0 auto 2.5rem;font-weight:300;animation:fadeUp .6s .16s ease both}
-.hero-ctas{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;animation:fadeUp .6s .24s ease both}
-.btn-cta-primary{background:var(--grad);color:white;border:none;padding:.875rem 2.1rem;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s;box-shadow:0 4px 16px rgba(58,123,213,0.35)}
-.btn-cta-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(58,123,213,0.45);color:white}
-.btn-cta-secondary{background:var(--white);color:var(--text);border:1.5px solid var(--border);padding:.875rem 2.1rem;border-radius:10px;font-size:1rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s;box-shadow:var(--shadow-sm)}
-.btn-cta-secondary:hover{border-color:var(--primary);color:var(--primary);transform:translateY(-2px);box-shadow:var(--shadow-md)}
-.hero-trust{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:1.5rem;margin-top:3rem;animation:fadeUp .6s .35s ease both}
-.trust-item{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted);font-weight:500}
-.trust-item i{color:var(--primary);font-size:.9rem}
-.trust-sep{width:1px;height:16px;background:var(--border)}
-.hero-mockup-wrap{margin-top:5rem;width:100%;max-width:940px;animation:fadeUp .8s .4s ease both;position:relative}
-.mockup-shadow-ring{position:absolute;inset:-1px;border-radius:17px;box-shadow:0 0 0 1px rgba(58,123,213,0.15),0 30px 80px rgba(58,123,213,0.12),0 60px 100px rgba(0,0,0,0.08);pointer-events:none}
-.mockup-window{background:var(--white);border:1px solid var(--border);border-radius:16px;overflow:hidden}
-.mockup-titlebar{background:#fafafa;padding:10px 16px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border2)}
-.mdot{width:10px;height:10px;border-radius:50%}
-.mockup-body{display:grid;grid-template-columns:200px 1fr;min-height:300px}
-.mock-sidebar{background:var(--white);border-right:1px solid var(--border2);padding:1rem 0}
-.mock-sb-header{padding:.5rem 1rem .75rem;font-size:.72rem;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border2);margin-bottom:.5rem}
-.mock-sb-item{padding:7px 1rem;font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:8px}
-.mock-sb-item.active{color:var(--primary);background:rgba(58,123,213,0.07);border-left:3px solid var(--primary);font-weight:600}
-.mock-main{background:var(--bg);padding:1rem}
-.mock-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
-.mock-kpi{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow-sm)}
-.mock-kpi-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
-.mock-kpi-val{font-size:1.3rem;font-weight:700;margin-top:1px}
-.mock-card{background:var(--white);border:1px solid var(--border);border-radius:10px;padding:10px 12px;box-shadow:var(--shadow-sm);margin-bottom:8px}
-.mock-card-label{font-size:.6rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;margin-bottom:8px}
-.mock-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2)}
-.mock-row:last-child{border-bottom:none}
-.mock-av{width:22px;height:22px;border-radius:50%;font-size:.55rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.mock-name{font-size:.7rem;font-weight:600;flex:1;color:var(--text)}
-.mock-pill{font-size:.57rem;padding:2px 8px;border-radius:100px;font-weight:600}
-.mock-soap-strip{background:var(--white);border:1px solid var(--border);border-left:3px solid var(--primary);border-radius:10px;padding:8px 12px;font-size:.62rem;color:var(--muted);box-shadow:var(--shadow-sm)}
-.mock-soap-label{font-size:.58rem;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
-@keyframes fadeUp{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
-.container{max-width:1100px;margin:0 auto;padding:0 1.5rem}
-.py-xl{padding:6rem 0}
-.section-label{display:inline-flex;align-items:center;gap:8px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--primary);margin-bottom:.875rem}
-.section-label::before{content:'';width:18px;height:2px;background:var(--grad);border-radius:2px}
-h2.section-title{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.7rem);line-height:1.15;color:var(--text);font-weight:700;margin-bottom:.875rem}
-.section-sub{color:var(--muted);font-size:1rem;max-width:540px;font-weight:300;line-height:1.7}
-.stats-strip{background:var(--white);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:2.25rem 0;box-shadow:var(--shadow-sm)}
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:1rem}
-.stat-num{font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.stat-lbl{color:var(--muted);font-size:.8rem;margin-top:3px;font-weight:500}
-.features-bg{background:var(--white)}
-.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3.5rem}
-.feat-card{background:var(--bg);border:1px solid var(--border);border-radius:14px;padding:1.75rem;position:relative;overflow:hidden;transition:all .28s}
-.feat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad);opacity:0;transition:opacity .28s}
-.feat-card:hover{border-color:rgba(58,123,213,0.25);background:var(--white);box-shadow:var(--shadow-md);transform:translateY(-4px)}
-.feat-card:hover::after{opacity:1}
-.feat-icon{width:44px;height:44px;background:rgba(58,123,213,0.09);border:1px solid rgba(58,123,213,0.18);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:var(--primary);margin-bottom:1rem}
-.feat-card h3{font-size:1rem;font-weight:600;color:var(--text);margin-bottom:.45rem}
-.feat-card p{color:var(--muted);font-size:.85rem;line-height:1.65}
-.feat-tag{display:inline-block;margin-top:1rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 10px;border-radius:100px}
-.feat-tag.ia{background:rgba(0,210,255,0.1);color:#0095b3;border:1px solid rgba(0,210,255,0.3)}
-.feat-tag.inc{background:rgba(58,123,213,0.08);color:var(--primary);border:1px solid rgba(58,123,213,0.2)}
-.feat-tag.new{background:rgba(46,204,113,0.08);color:#27ae60;border:1px solid rgba(46,204,113,0.25)}
-.lucia-bg{background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-.lucia-grid{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
-.lucia-chat-box{background:var(--white);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:var(--shadow-xl)}
-.lucia-chat-head{background:var(--primary);padding:12px 16px;display:flex;align-items:center;gap:10px}
-.lucia-chat-head .l-av{width:30px;height:30px;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:white}
-.chat-msgs{padding:1.25rem;min-height:270px;display:flex;flex-direction:column;gap:.875rem}
-.msg{display:flex;gap:9px;align-items:flex-start}
-.msg.me{flex-direction:row-reverse}
-.msg-av{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.78rem}
-.msg-av.bot{background:rgba(58,123,213,0.12);color:var(--primary)}
-.msg-av.usr{background:var(--bg);color:var(--muted);border:1px solid var(--border)}
-.msg-text{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:9px 13px;font-size:.8rem;line-height:1.55;max-width:80%;color:var(--text)}
-.msg-text.bot-msg{background:rgba(58,123,213,0.06);border-color:rgba(58,123,213,0.15)}
-.typing{display:flex;gap:4px;padding:9px 13px;background:rgba(58,123,213,0.06);border:1px solid rgba(58,123,213,0.15);border-radius:10px;width:fit-content}
-.typing span{width:6px;height:6px;background:var(--primary);border-radius:50%;animation:tdot 1.2s infinite}
-.typing span:nth-child(2){animation-delay:.2s}
-.typing span:nth-child(3){animation-delay:.4s}
-@keyframes tdot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
-.lucia-bullets{margin-top:2rem;display:flex;flex-direction:column;gap:1.1rem}
-.lucia-bullet{display:flex;align-items:flex-start;gap:12px}
-.lucia-bullet .bicon{width:34px;height:34px;background:rgba(58,123,213,0.08);border:1px solid rgba(58,123,213,0.15);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:.9rem;flex-shrink:0}
-.lucia-bullet h4{font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:2px}
-.lucia-bullet p{font-size:.8rem;color:var(--muted);line-height:1.55}
-.seg-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.25rem;margin-top:3.5rem}
-.seg-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.5rem;text-align:center;box-shadow:var(--shadow-sm);transition:all .28s}
-.seg-card:hover{border-color:rgba(46,204,113,0.35);transform:translateY(-3px);box-shadow:var(--shadow-md)}
-.seg-icon-wrap{font-size:2rem;margin-bottom:.75rem}
-.seg-card h3{font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.4rem}
-.seg-card p{color:var(--muted);font-size:.78rem;line-height:1.6}
-.seg-ok{display:inline-flex;align-items:center;gap:5px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);color:#27ae60;font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:100px;margin-top:.75rem}
-.legal-row{display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center;margin-top:3rem;padding-top:2rem;border-top:1px solid var(--border)}
-.legal-row a{color:var(--muted);font-size:.8rem;text-decoration:none;display:flex;align-items:center;gap:6px;transition:color var(--speed)}
-.legal-row a:hover{color:var(--primary)}
-.pricing-bg{background:var(--white);border-top:1px solid var(--border)}
-.urgencia-bar{max-width:820px;margin:3rem auto 0;background:#fff8f0;border:1px solid #f5c878;border-radius:12px;padding:1.1rem 1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
-.urgencia-msg{font-size:.875rem;color:var(--text)}
-.urgencia-msg strong{color:#d68910}
-.timer-wrap{display:flex;gap:7px;align-items:center}
-.tblock{background:var(--white);border:1px solid #f5c878;border-radius:8px;padding:7px 12px;text-align:center;min-width:50px}
-.tnum{font-family:'Playfair Display',serif;font-size:1.35rem;font-weight:700;color:#d68910;line-height:1}
-.tlbl{font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
-.tsep{font-size:1.1rem;color:#f5c878;margin-top:-4px}
-.cupos-wrap{max-width:820px;margin:1.25rem auto;text-align:center}
-.cupos-lbl{font-size:.8rem;color:var(--muted);margin-bottom:7px}
-.cupos-lbl span{color:#d68910;font-weight:600}
-.cupos-track{height:6px;background:var(--bg2);border-radius:3px;overflow:hidden}
-.cupos-fill{height:100%;background:linear-gradient(to right,#f39c12,#e67e22);border-radius:3px;animation:cupfill 1.5s ease}
-@keyframes cupfill{from{width:0}}
-.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.75rem;max-width:820px;margin:3.5rem auto 0}
-.price-card{background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:2.25rem;position:relative;transition:all .28s;box-shadow:var(--shadow-sm)}
-.price-card.featured{background:var(--white);border-color:rgba(58,123,213,0.35);box-shadow:0 0 0 4px rgba(58,123,213,0.06),var(--shadow-lg)}
-.price-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
-.price-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--grad);color:white;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:4px 16px;border-radius:100px;white-space:nowrap;box-shadow:0 2px 8px rgba(58,123,213,0.3)}
-.price-card h3{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:1rem;font-weight:700}
-.price-original{font-size:.8rem;color:var(--muted);text-decoration:line-through;margin-bottom:2px}
-.price-row{display:flex;align-items:flex-start;gap:3px;margin-bottom:.2rem}
-.price-cur{font-size:1.1rem;font-weight:600;color:var(--muted);margin-top:7px}
-.price-num{font-family:'Playfair Display',serif;font-size:3.2rem;font-weight:900;line-height:1;color:var(--text)}
-.price-num.grad{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.price-period{color:var(--muted);font-size:.8rem;margin-bottom:.25rem}
-.price-saving{display:inline-flex;align-items:center;gap:5px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);color:#27ae60;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:100px;margin-bottom:1.5rem}
-.price-features{list-style:none;margin-bottom:2rem}
-.price-features li{display:flex;align-items:flex-start;gap:9px;font-size:.855rem;padding:.5rem 0;border-bottom:1px solid var(--border2);color:var(--muted)}
-.price-features li:last-child{border-bottom:none}
-.price-features li i{font-size:.88rem;flex-shrink:0;margin-top:2px}
-.price-features li span{color:var(--text)}
-.btn-price{width:100%;padding:.875rem;border-radius:10px;font-weight:600;font-size:.95rem;cursor:pointer;border:none;transition:all .25s;text-decoration:none;display:block;text-align:center;font-family:'DM Sans',sans-serif}
-.btn-price.main{background:var(--grad);color:white;box-shadow:0 4px 14px rgba(58,123,213,0.35)}
-.btn-price.main:hover{opacity:.9;transform:translateY(-2px);color:white;box-shadow:0 8px 20px rgba(58,123,213,0.45)}
-.btn-price.alt{background:var(--bg2);color:var(--text);border:1.5px solid var(--border)}
-.btn-price.alt:hover{border-color:var(--primary);color:var(--primary);background:rgba(58,123,213,0.05)}
-.stripe-note{text-align:center;margin-top:.75rem;font-size:.72rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:5px}
-.stripe-note i{color:#635bff}
-.garantia-box{max-width:820px;margin:2.5rem auto 0;background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.22);border-radius:14px;padding:2rem 2.5rem;display:flex;align-items:center;gap:2rem;flex-wrap:wrap;box-shadow:var(--shadow-sm)}
-.garantia-box .gicon{font-size:3rem;flex-shrink:0}
-.garantia-box h3{font-size:1.05rem;font-weight:700;color:#27ae60;margin-bottom:.35rem}
-.garantia-box p{color:var(--muted);font-size:.85rem;line-height:1.65}
-.test-bg{background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-.test-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:3.5rem}
-.test-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.75rem;box-shadow:var(--shadow-sm);transition:all .28s}
-.test-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:rgba(58,123,213,0.2)}
-.test-stars{color:#f39c12;font-size:.78rem;margin-bottom:.625rem}
-.test-quote{font-family:'Playfair Display',serif;font-size:2.8rem;color:rgba(58,123,213,0.15);line-height:1;margin-bottom:.25rem}
-.test-text{font-size:.875rem;color:var(--muted);line-height:1.7;margin-bottom:1.25rem}
-.test-author{display:flex;align-items:center;gap:10px}
-.test-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.82rem;flex-shrink:0}
-.test-name{font-size:.85rem;font-weight:600;color:var(--text)}
-.test-role{font-size:.75rem;color:var(--muted)}
-.faq-wrap{max-width:700px;margin:3.5rem auto 0}
-.faq-item{border-bottom:1px solid var(--border)}
-.faq-q{width:100%;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:500;padding:1.2rem 0;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:1rem;transition:color var(--speed)}
-.faq-q:hover{color:var(--primary)}
-.faq-q .ficon{color:var(--primary);font-size:1.1rem;transition:transform .3s;flex-shrink:0}
-.faq-q.open .ficon{transform:rotate(45deg)}
-.faq-a{overflow:hidden;max-height:0;transition:max-height .38s ease,padding .28s}
-.faq-a.open{max-height:180px;padding-bottom:1.2rem}
-.faq-a p{color:var(--muted);font-size:.875rem;line-height:1.7}
-.demo-placeholder{max-width:740px;margin:2.5rem auto 0;background:var(--white);border:1.5px dashed rgba(58,123,213,0.3);border-radius:16px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;box-shadow:var(--shadow-sm)}
-.play-btn{width:68px;height:68px;background:var(--grad);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 18px rgba(58,123,213,0.4);transition:transform .25s,box-shadow .25s}
-.play-btn:hover{transform:scale(1.1);box-shadow:0 8px 24px rgba(58,123,213,0.5)}
-.cta-final-bg{background:var(--primary);position:relative;overflow:hidden}
-.cta-final-bg::before{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.04) 1px,transparent 1px);background-size:40px 40px}
-.cta-final-bg .glow{position:absolute;top:-100px;right:-100px;width:500px;height:500px;background:radial-gradient(ellipse,rgba(0,210,255,0.2) 0%,transparent 65%);pointer-events:none}
-.cta-final-content{position:relative;z-index:1;text-align:center;padding:6rem 1.5rem}
-.cta-final-content h2{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,4vw,3rem);color:white;margin-bottom:1rem}
-.cta-final-content p{color:rgba(255,255,255,0.72);font-size:1.05rem;margin-bottom:2.5rem}
-.btn-cta-white{background:white;color:var(--primary);border:none;padding:.9rem 2.1rem;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s;box-shadow:0 4px 14px rgba(0,0,0,0.15)}
-.btn-cta-white:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);color:var(--primary)}
-.btn-cta-outline-white{background:transparent;color:white;border:2px solid rgba(255,255,255,0.4);padding:.875rem 2.1rem;border-radius:10px;font-size:1rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .25s}
-.btn-cta-outline-white:hover{border-color:white;background:rgba(255,255,255,0.1);color:white}
-footer{background:var(--white);border-top:1px solid var(--border);padding:3.5rem 0 2rem}
-.foot-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:2.5rem;margin-bottom:3rem}
-.foot-desc{color:var(--muted);font-size:.82rem;line-height:1.7;margin-top:.75rem;max-width:220px}
-.foot-social{display:flex;gap:.75rem;margin-top:1rem}
-.foot-social a{color:var(--muted);font-size:1.2rem;transition:color var(--speed);text-decoration:none}
-.foot-social a:hover{color:var(--primary)}
-.foot-col h4{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text);margin-bottom:1rem}
-.foot-col a{display:block;color:var(--muted);font-size:.82rem;text-decoration:none;margin-bottom:.5rem;transition:color var(--speed)}
-.foot-col a:hover{color:var(--primary)}
-.foot-bottom{border-top:1px solid var(--border);padding-top:1.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
-.foot-bottom p{color:var(--muted);font-size:.78rem}
-.foot-badges{display:flex;gap:.75rem;flex-wrap:wrap}
-.foot-badge{display:flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.68rem;color:var(--muted);font-weight:500}
-.foot-badge i{color:#27ae60}
-.foot-badge.stripe i{color:#635bff}
-.wa-float{position:fixed;bottom:28px;right:28px;width:54px;height:54px;background:#25d366;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:1.5rem;text-decoration:none;box-shadow:0 4px 14px rgba(37,211,102,0.45);z-index:999;transition:all .3s}
-.wa-float:hover{transform:scale(1.1);color:white;box-shadow:0 8px 20px rgba(37,211,102,0.55)}
-.wa-float::after{content:'';position:absolute;inset:0;border-radius:50%;background:#25d366;animation:wapulse 2.2s infinite;z-index:-1}
-@keyframes wapulse{0%{transform:scale(1);opacity:.35}100%{transform:scale(1.65);opacity:0}}
-.reveal{opacity:0;transform:translateY(24px);transition:opacity .65s ease,transform .65s ease}
-.reveal.visible{opacity:1;transform:translateY(0)}
+# ==========================================
+# 1. CONFIGURACIÓN INICIAL
+# ==========================================
+load_dotenv()
 
-/* -------------------------------------------
-   NUEVOS ESTILOS PARA MODAL Y SMART PORTAL
-------------------------------------------- */
-.d-none { display: none !important; }
+SUPABASE_URL        = os.getenv("SUPABASE_URL")
+SUPABASE_KEY        = os.getenv("SUPABASE_KEY")
+GEMINI_API_KEY      = os.getenv("GEMINI_API_KEY")
+STRIPE_SECRET_KEY   = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
+STRIPE_PRICE_ID     = os.getenv("STRIPE_PRICE_ID", "price_1TNi4nCSdv7aogFNHp8XAqjc")
 
-/* Modal de Login */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 2000; display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; }
-.modal-overlay.show { display: flex; opacity: 1; }
-.login-modal { background: var(--white); padding: 2.5rem; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: var(--shadow-xl); transform: translateY(-20px); transition: transform 0.3s; position: relative; }
-.modal-overlay.show .login-modal { transform: translateY(0); }
-.close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; color: var(--muted); cursor: pointer; }
-.login-form .form-control { width: 100%; padding: 0.8rem 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem; font-family: inherit; font-size: 0.95rem; }
-.login-form .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(58,123,213,0.1); }
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+else:
+    print("⚠️  STRIPE_SECRET_KEY no encontrado en .env")
 
-/* Dashboard Bienvenido (Smart Portal) */
-.user-dash-bg { background: var(--bg); min-height: 100vh; padding-top: 8rem; padding-bottom: 4rem; }
-.welcome-header { margin-bottom: 2.5rem; }
-.welcome-header h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 4vw, 3rem); color: var(--text); }
-.dash-widgets { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 4rem; }
-.dash-widget { background: var(--white); border-radius: 14px; padding: 1.75rem; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
-.dash-widget h3 { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
-.news-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
-.news-card { background: var(--white); border-radius: 14px; padding: 1.5rem; border: 1px solid var(--border); transition: all 0.3s; }
-.news-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--primary); }
-.news-card h4 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
-.news-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
-.news-badge { display: inline-block; padding: 3px 10px; background: rgba(58,123,213,0.1); color: var(--primary); border-radius: 100px; font-size: 0.7rem; font-weight: 700; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
+if not SUPABASE_URL or not SUPABASE_URL.startswith("http"):
+    print("⚠️  SUPABASE_URL inválido en .env")
+    SUPABASE_URL = "https://proyecto-dummy.supabase.co"
+    SUPABASE_KEY = "llave-dummy"
 
-@media(max-width: 900px) { .news-grid { grid-template-columns: repeat(2, 1fr); } }
-@media(max-width: 768px) { .dash-widgets { grid-template-columns: 1fr; } .news-grid { grid-template-columns: 1fr; } }
-</style>
-</head>
-<body>
+app = FastAPI(
+    title="Psicogestor API",
+    description="Backend Psicogestor 2.0 — Dev Group Studio",
+    version="2.0.1"
+)
 
-<nav class="navbar" id="navbar">
-  <a href="#" class="nav-brand">
-    <span class="nav-brand-icon"><i class="bi bi-brain"></i></span>
-    Psicogestor <span style="font-weight:300;color:var(--muted);margin-left:3px;font-size:1rem;">2.0</span>
-  </a>
-  <div class="nav-links">
-    <a href="#funcionalidades">Funcionalidades</a>
-    <a href="#lucia">LucIA IA</a>
-    <a href="#seguridad">Seguridad</a>
-    <a href="#precios">Precios</a>
-    <div id="nav-auth-section">
-      <button onclick="openLoginModal()" class="btn-nav">Iniciar Sesión →</button>
-    </div>
-  </div>
-</nav>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-<div id="guest-hero">
-  <section class="hero">
-    <div class="hero-glow"></div>
-    <div class="hero-badge"><span class="badge-dot"></span> Plataforma en vivo · Lanzamiento 2025</div>
-    <h1 class="hero-title">Digitaliza tu consulta hoy:<br><span class="gradient-text">menos papeleo,</span> más terapia</h1>
-    <p class="hero-sub">El sistema todo-en-uno para psicólogos. Expedientes clínicos, notas SOAP con IA, agenda y finanzas — todo en un solo lugar, desde el día 1.</p>
-    <div class="hero-ctas">
-      <a href="#precios" class="btn-cta-primary"><i class="bi bi-rocket-takeoff-fill"></i> Empezar Ahora — $399/mes</a>
-      <a href="#demo" class="btn-cta-secondary"><i class="bi bi-play-circle-fill"></i> Ver Demo</a>
-    </div>
-    <div class="hero-trust">
-      <div class="trust-item"><i class="bi bi-shield-check-fill"></i> Datos cifrados</div>
-      <div class="trust-sep"></div>
-      <div class="trust-item"><i class="bi bi-gift-fill"></i> Plan gratuito disponible</div>
-      <div class="trust-sep"></div>
-      <div class="trust-item"><i class="bi bi-credit-card-fill"></i> Pago seguro con Stripe</div>
-      <div class="trust-sep"></div>
-      <div class="trust-item"><i class="bi bi-headset"></i> Soporte WhatsApp</div>
-    </div>
-    <div class="hero-mockup-wrap">
-      <div class="mockup-shadow-ring"></div>
-      <div class="mockup-window">
-        <div class="mockup-titlebar">
-          <div class="mdot" style="background:#ff5f57;"></div>
-          <div class="mdot" style="background:#ffbd2e;"></div>
-          <div class="mdot" style="background:#28c840;"></div>
-          <div style="flex:1;background:var(--bg2);height:14px;border-radius:4px;margin-left:12px;max-width:180px;"></div>
-          <div style="background:var(--bg2);height:14px;border-radius:4px;width:60px;margin-left:auto;"></div>
-        </div>
-        <div class="mockup-body">
-          <div class="mock-sidebar">
-            <div class="mock-sb-header"><i class="bi bi-brain" style="font-size:.85rem;"></i> Psicogestor 2.0</div>
-            <div class="mock-sb-item"><i class="bi bi-house-door" style="font-size:.78rem;"></i> Inicio</div>
-            <div class="mock-sb-item active"><i class="bi bi-person-hearts" style="font-size:.78rem;"></i> Pacientes</div>
-            <div class="mock-sb-item"><i class="bi bi-folder2-open" style="font-size:.78rem;"></i> Expediente</div>
-            <div class="mock-sb-item"><i class="bi bi-calendar-check" style="font-size:.78rem;"></i> Sesiones</div>
-            <div class="mock-sb-item"><i class="bi bi-cash-stack" style="font-size:.78rem;"></i> Finanzas</div>
-            <div class="mock-sb-item"><i class="bi bi-bar-chart-line" style="font-size:.78rem;"></i> Reportes</div>
-          </div>
-          <div class="mock-main">
-            <div class="mock-kpis">
-              <div class="mock-kpi"><div class="mock-kpi-label">Citas hoy</div><div class="mock-kpi-val" style="color:var(--primary);">5</div></div>
-              <div class="mock-kpi"><div class="mock-kpi-label">Pacientes</div><div class="mock-kpi-val" style="color:#27ae60;">24</div></div>
-              <div class="mock-kpi"><div class="mock-kpi-label">Sesiones mes</div><div class="mock-kpi-val" style="color:#d68910;">47</div></div>
-              <div class="mock-kpi"><div class="mock-kpi-label">Alertas</div><div class="mock-kpi-val" style="color:#e74c3c;">2</div></div>
-            </div>
-            <div class="mock-card">
-              <div class="mock-card-label">Agenda de hoy</div>
-              <div class="mock-row">
-                <div class="mock-av" style="background:rgba(58,123,213,0.12);color:var(--primary);">MG</div>
-                <div class="mock-name">María García</div>
-                <div class="mock-pill" style="background:rgba(46,204,113,0.1);color:#27ae60;">10:00 AM</div>
-              </div>
-              <div class="mock-row">
-                <div class="mock-av" style="background:rgba(243,156,18,0.12);color:#d68910;">JR</div>
-                <div class="mock-name">Juan Rodríguez</div>
-                <div class="mock-pill" style="background:rgba(58,123,213,0.1);color:var(--primary);">12:30 PM</div>
-              </div>
-              <div class="mock-row">
-                <div class="mock-av" style="background:rgba(231,76,60,0.12);color:#c0392b;">AL</div>
-                <div class="mock-name">Ana López</div>
-                <div class="mock-pill" style="background:var(--bg2);color:var(--muted);">4:00 PM</div>
-              </div>
-            </div>
-            <div class="mock-soap-strip">
-              <div class="mock-soap-label"><i class="bi bi-magic" style="margin-right:4px;"></i>LucIA — Última nota SOAP</div>
-              <span style="color:var(--primary);font-weight:700;">S:</span> Paciente reporta mejoría en sueño y reducción de rumiación nocturna. <span style="color:var(--primary);font-weight:700;">P:</span> Continuar diario de emociones y técnica 4-7-8.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-</div>
+# Clientes globales
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
-<div id="user-dashboard" class="user-dash-bg d-none">
-  <div class="container">
-    <div class="welcome-header reveal">
-      <h1 id="user-welcome-name">Bienvenido, Doctor</h1>
-      <p style="color:var(--muted); font-size: 1.1rem;">Tu asistente clínico está listo para la jornada de hoy.</p>
-    </div>
+# ==========================================
+# 2. FRONTEND ESTÁTICO
+# ==========================================
+# Asegúrate de que exista la carpeta public/ con tus HTML
+app.mount("/app", StaticFiles(directory="public", html=True), name="public")
+
+@app.get("/")
+async def root():
+    # En lugar de Redirect, mandamos el archivo físico
+    # Esto hace que al entrar a psicogestor.devgroupstudio.xyz
+    # se vea el index sin cambiar la URL a /app/login.html
+    return FileResponse("public/index.html")
+# ==========================================
+# 3. MODELOS PYDANTIC
+# ==========================================
+
+class CitaCreate(BaseModel):
+    paciente: str
+    profesional_id: str
+    fecha: str
+    hora: str
+    tipo: str
+    notas: str
+    sync: bool
+    modalidad: str = "presencial"
+
+class SesionAnalisis(BaseModel):
+    paciente_id: str
+    via: str
+    s: str
+    o: str
+    a: str
+    p: str
+
+class MensajeChat(BaseModel):
+    mensaje: str
+
+class PacienteNuevo(BaseModel):
+    profesional_id: str
+    nombre: str
+    fecha_nacimiento: str
+    genero: str
+    estado_civil: str
+    ocupacion: str
+    telefono_whatsapp: str
+    email: str | None = None
+    domicilio: str | None = None
+    contacto_emergencia_nombre: str
+    contacto_emergencia_tel: str
+    motivo_consulta: str
+    terapia_previa: bool = False
+    notas_alergias_meds: str | None = None
+
+class PlantillaCreate(BaseModel):
+    profesional_id: str
+    nombre_plantilla: str
+    campos: List[Dict[str, Any]]
+
+class SoapTextoLibre(BaseModel):
+    texto: str  # IMPORTANTE: debe llamarse "texto" para coincidir con el frontend
+
+# ==========================================
+# 4. HELPER: VERIFICAR USUARIO Y PLAN
+# ==========================================
+
+def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
+    """
+    Verifica el token JWT de Supabase.
+    Devuelve el user_id si es válido.
+    Lanza HTTPException si el token es inválido o el plan no es suficiente.
+    """
+    try:
+        user_response = supabase.auth.get_user(token)
+        user_id = user_response.user.id
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token inválido o sesión expirada.")
+
+    if plan_requerido == "pro":
+        try:
+            perfil = supabase.table("perfiles_profesionales") \
+                .select("tipo_plan") \
+                .eq("id", user_id) \
+                .execute()
+
+            if not perfil.data:
+                raise HTTPException(status_code=404, detail="Perfil profesional no encontrado.")
+
+            plan_db = str(perfil.data[0].get("tipo_plan", "")).strip().lower()
+            print(f"[DEBUG] Usuario {user_id} → plan detectado: '{plan_db}'")
+
+            if plan_db != "pro":
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Esta función requiere Plan Pro. Tu plan actual: '{plan_db}'. Actualiza en Configuración."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Error al verificar plan: {str(e)}")
+
+    return user_id
+
+# ==========================================
+# 5. ENDPOINTS — PACIENTES
+# ==========================================
+
+@app.post("/api/pacientes")
+async def registrar_paciente(paciente: PacienteNuevo, request: Request):
+    # Verificamos que sea un usuario real (aunque sea plan gratis)
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
+    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
     
-    <div class="dash-widgets reveal">
-      <div class="dash-widget">
-        <h3><i class="bi bi-calendar-event"></i> Tu Próxima Cita</h3>
-        <div id="quick-next-appointment" style="min-height: 60px; display:flex; flex-direction:column; justify-content:center;">
-          <div style="color:var(--muted); font-size:0.9rem;"><span class="spinner-border spinner-border-sm text-primary" role="status" style="margin-right:8px;"></span> Buscando en tu agenda...</div>
-        </div>
-        <a href="dashboard.html" class="btn-cta-secondary" style="margin-top:1.5rem; padding: 0.6rem 1.2rem; font-size:0.9rem; width:100%; justify-content:center;">Abrir Agenda Completa</a>
-      </div>
-      
-      <div class="dash-widget" style="background: var(--grad); color: white; border:none; position:relative; overflow:hidden;">
-        <div style="position:absolute; top:-50px; right:-50px; width:150px; height:150px; background:radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%); border-radius:50%;"></div>
-        <h3 style="color: white; z-index:1; position:relative;"><i class="bi bi-robot"></i> LucIA Concierge</h3>
-        <p style="font-size:0.95rem; opacity:0.9; margin-bottom:1.5rem; line-height:1.5; z-index:1; position:relative;" id="lucia-concierge-msg">
-          He revisado tus expedientes de hoy. Todo está en orden. Haz clic abajo para entrar al panel y estructurar tus notas clínicas en segundos.
-        </p>
-        <a href="dashboard.html" class="btn-nav" style="background: white; color: var(--primary); width:100%; text-align:center; position:relative; z-index:1;">Entrar a mi Panel Principal →</a>
-      </div>
-    </div>
-
-    <div class="reveal">
-      <div class="section-label">Actualizaciones</div>
-      <h2 class="section-title" style="font-size:1.8rem; margin-bottom: 2rem;">Lo nuevo en Psicogestor</h2>
-      <div class="news-grid">
-        <div class="news-card">
-          <span class="news-badge">IA Mejorada</span>
-          <h4>LucIA analiza el tono emocional</h4>
-          <p>Nuestra IA ahora es capaz de leer entre líneas y detectar lenguaje de riesgo automáticamente mientras escribes tus notas SOAP.</p>
-        </div>
-        <div class="news-card">
-          <span class="news-badge" style="background: rgba(46,204,113,0.1); color: #27ae60;">Nueva Herramienta</span>
-          <h4>Termómetro Emocional Visual</h4>
-          <p>Mide el progreso de ansiedad o ánimo sesión tras sesión con gráficas de fácil lectura. Búscalo dentro de cualquier expediente.</p>
-        </div>
-        <div class="news-card">
-          <span class="news-badge" style="background: rgba(243,156,18,0.1); color: #d68910;">Sincronización</span>
-          <h4>Conexión Webcal (iCal/Google)</h4>
-          <p>Ahora puedes suscribirte al feed .ics de tu agenda para ver todas tus citas de Psicogestor directamente en tu celular o calendario favorito.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="stats-strip">
-  <div class="container">
-    <div class="stats-grid">
-      <div><div class="stat-num">+200</div><div class="stat-lbl">Psicólogos en lista de espera</div></div>
-      <div><div class="stat-num">100%</div><div class="stat-lbl">Datos cifrados</div></div>
-      <div><div class="stat-num">3 min</div><div class="stat-lbl">Setup promedio</div></div>
-      <div><div class="stat-num">99.9%</div><div class="stat-lbl">Uptime garantizado</div></div>
-    </div>
-  </div>
-</div>
-
-<section id="funcionalidades" class="features-bg py-xl">
-  <div class="container">
-    <div class="reveal">
-      <div class="section-label">Funcionalidades</div>
-      <h2 class="section-title">Todo lo que necesitas<br>en un solo sistema</h2>
-      <p class="section-sub">Desde el primer expediente hasta reportes avanzados. Diseñado para el flujo clínico real.</p>
-    </div>
-    <div class="features-grid">
-      <div class="feat-card reveal"><div class="feat-icon"><i class="bi bi-folder2-open"></i></div><h3>Expedientes Digitales</h3><p>Historia clínica completa, contacto de emergencia, campos personalizados por plantilla y bitácora de accesos.</p><span class="feat-tag inc">Incluido</span></div>
-      <div class="feat-card reveal"><div class="feat-icon"><i class="bi bi-magic"></i></div><h3>SOAP Automático</h3><p>Escribe tus notas en texto libre y LucIA las organiza en formato SOAP profesional en segundos.</p><span class="feat-tag ia">IA Incluida</span></div>
-      <div class="feat-card reveal"><div class="feat-icon"><i class="bi bi-thermometer-half" style="color:#d68910;"></i></div><h3>Termómetro Emocional</h3><p>Mide y visualiza el estado de ánimo de tus pacientes a lo largo del tiempo para adaptar tus intervenciones de manera precisa.</p><span class="feat-tag new">Nuevo</span></div>
-      <div class="feat-card reveal"><div class="feat-icon"><i class="bi bi-calendar-check"></i></div><h3>Agenda Inteligente</h3><p>Programa citas, descarga .ics y sincroniza con Apple Calendar o Google Calendar automáticamente.</p><span class="feat-tag inc">Incluido</span></div>
-      <div class="feat-card reveal"><div class="feat-icon"><i class="bi bi-exclamation-triangle-fill" style="color:#e74c3c;"></i></div><h3>Alertas de Riesgo</h3><p>Detección automática de lenguaje de riesgo en notas clínicas. Alertas en tiempo real para actuar a tiempo.</p><span class="feat-tag ia">IA Incluida</span></div>
-      <div class="feat-card reveal"><div class="feat-icon"><i class="bi bi-diagram-3"></i></div><h3>Línea de Vida</h3><p>Registra hitos vitales del paciente — logros, crisis, cambios — con una línea de tiempo visual e interactiva.</p><span class="feat-tag new">Exclusivo</span></div>
-    </div>
-  </div>
-</section>
-
-<section id="lucia" class="lucia-bg py-xl">
-  <div class="container">
-    <div class="lucia-grid">
-      <div class="reveal">
-        <div class="section-label">Asistente de IA</div>
-        <h2 class="section-title">Conoce a <span class="gradient-text">LucIA</span></h2>
-        <p class="section-sub">Tu asistente clínico inteligente. Analiza expedientes, estructura notas y te prepara para cada sesión antes de que empiece.</p>
-        <div class="lucia-bullets">
-          <div class="lucia-bullet"><div class="bicon"><i class="bi bi-file-text-fill"></i></div><div><h4>Estructurador SOAP Automático</h4><p>Convierte notas de texto libre en notas SOAP profesionales en menos de 10 segundos.</p></div></div>
-          <div class="lucia-bullet"><div class="bicon"><i class="bi bi-lightning-charge-fill"></i></div><div><h4>Resumen Pre-Sesión</h4><p>Antes de cada cita, LucIA te prepara un briefing del estado del paciente y compromisos pendientes.</p></div></div>
-          <div class="lucia-bullet"><div class="bicon"><i class="bi bi-chat-dots-fill"></i></div><div><h4>Chat Clínico Contextual</h4><p>Pregúntale sobre cualquier paciente. Tiene acceso completo a los expedientes y responde en lenguaje clínico.</p></div></div>
-        </div>
-      </div>
-      <div class="reveal">
-        <div class="lucia-chat-box">
-          <div class="lucia-chat-head">
-            <div class="l-av"><i class="bi bi-robot" style="font-size:.85rem;"></i></div>
-            <div><div style="font-size:.85rem;font-weight:600;color:white;">LucIA Asistente</div><div style="font-size:.68rem;color:rgba(255,255,255,0.65);">● En línea</div></div>
-          </div>
-          <div class="chat-msgs">
-            <div class="msg"><div class="msg-av bot"><i class="bi bi-robot" style="font-size:.8rem;"></i></div><div class="msg-text bot-msg">Tienes 3 citas hoy. La primera con María García es en 20 minutos. En la última sesión reportó avance en ansiedad. ¿Quieres el resumen?</div></div>
-            <div class="msg me"><div class="msg-av usr"><i class="bi bi-person" style="font-size:.85rem;"></i></div><div class="msg-text">Sí, dame el resumen pre-sesión.</div></div>
-            <div class="msg"><div class="msg-av bot"><i class="bi bi-robot" style="font-size:.8rem;"></i></div><div class="msg-text bot-msg"><strong>María García — Sesión 8:</strong><br><br>Estado: ansiedad moderada, mejora en sueño. Tema: conflictos laborales. Compromisos: diario de emociones ✓ · técnica 4-7-8 (en progreso).</div></div>
-            <div class="msg"><div class="msg-av bot"><i class="bi bi-robot" style="font-size:.8rem;"></i></div><div class="typing"><span></span><span></span><span></span></div></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="seguridad" class="py-xl">
-  <div class="container">
-    <div class="reveal" style="text-align:center;">
-      <div class="section-label" style="justify-content:center;">Seguridad</div>
-      <h2 class="section-title">Tus expedientes, protegidos<br>como lo exige la ética</h2>
-      <p class="section-sub" style="margin:0 auto;">Para un psicólogo la confidencialidad es un deber legal y ético. Psicogestor está construido con los más altos estándares desde el primer día.</p>
-    </div>
-    <div class="seg-grid">
-      <div class="seg-card reveal"><div class="seg-icon-wrap">🔒</div><h3>Cifrado AES-256</h3><p>Todos los datos se transmiten y almacenan cifrados. Nadie más que tú puede acceder a tus expedientes.</p><span class="seg-ok"><i class="bi bi-check-circle-fill"></i> Activo</span></div>
-      <div class="seg-card reveal"><div class="seg-icon-wrap">☁️</div><h3>Backups Automáticos</h3><p>Tu información se respalda diariamente en servidores redundantes. Nunca perderás un expediente.</p><span class="seg-ok"><i class="bi bi-check-circle-fill"></i> Diario</span></div>
-      <div class="seg-card reveal"><div class="seg-icon-wrap">🛡️</div><h3>Cumplimiento LFPDPPP</h3><p>Diseñado conforme a la Ley Federal de Protección de Datos Personales y estándares equivalentes a HIPAA.</p><span class="seg-ok"><i class="bi bi-check-circle-fill"></i> Cumple</span></div>
-      <div class="seg-card reveal"><div class="seg-icon-wrap">📋</div><h3>Bitácora de Accesos</h3><p>Auditoría completa. Cada acceso a un expediente queda registrado con fecha, hora y dispositivo.</p><span class="seg-ok"><i class="bi bi-check-circle-fill"></i> Incluido</span></div>
-    </div>
-    <div class="legal-row reveal">
-      <a href="#"><i class="bi bi-file-text"></i> Términos y Condiciones</a>
-      <a href="#"><i class="bi bi-shield-lock"></i> Política de Privacidad</a>
-      <a href="#"><i class="bi bi-file-earmark-medical"></i> Uso de Datos Clínicos</a>
-      <a href="#"><i class="bi bi-award"></i> Certificaciones</a>
-    </div>
-  </div>
-</section>
-
-<section id="precios" class="pricing-bg py-xl">
-  <div class="container" style="text-align:center;">
-    <div class="reveal">
-      <div class="section-label" style="justify-content:center;">Precios</div>
-      <h2 class="section-title">Precio de lanzamiento.<br>Sin sorpresas.</h2>
-      <p class="section-sub" style="margin:0 auto;">Empieza gratis, decide al ver los resultados. Sin contratos, sin permanencia mínima.</p>
-    </div>
-    <div class="urgencia-bar reveal">
-      <div class="urgencia-msg"><i class="bi bi-fire" style="color:#d68910;margin-right:6px;"></i><strong>Precio de lanzamiento — tiempo limitado.</strong><span style="color:var(--muted);font-size:.82rem;display:block;margin-top:2px;">El precio sube a $599/mes al terminar la ventana de lanzamiento.</span></div>
-      <div class="timer-wrap">
-        <div class="tblock"><div class="tnum" id="timer-h">47</div><div class="tlbl">Hrs</div></div>
-        <div class="tsep">:</div>
-        <div class="tblock"><div class="tnum" id="timer-m">59</div><div class="tlbl">Min</div></div>
-        <div class="tsep">:</div>
-        <div class="tblock"><div class="tnum" id="timer-s">30</div><div class="tlbl">Seg</div></div>
-      </div>
-    </div>
-    <div class="cupos-wrap reveal">
-      <div class="cupos-lbl">Cupos de lanzamiento: <span>17 de 50 restantes</span></div>
-      <div class="cupos-track"><div class="cupos-fill" style="width:66%;"></div></div>
-    </div>
-    <div class="pricing-grid reveal">
-      <div class="price-card">
-        <h3>Plan Gratuito</h3>
-        <div class="price-row"><div class="price-cur">$</div><div class="price-num">0</div></div>
-        <div class="price-period">MXN al mes · Para siempre</div>
-        <ul class="price-features" style="margin-top:1rem;">
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Hasta 5 pacientes</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Notas SOAP manuales</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Agenda básica</span></li>
-          <li><i class="bi bi-x-circle-fill" style="color:var(--muted);"></i><span style="color:var(--muted);">LucIA IA Automática</span></li>
-          <li><i class="bi bi-x-circle-fill" style="color:var(--muted);"></i><span style="color:var(--muted);">Sincronización de calendario</span></li>
-        </ul>
-        <a href="registro.html" class="btn-price alt" style="text-decoration:none;">Crear Cuenta Gratis</a>
-      </div>
-      <div class="price-card featured">
-        <div class="price-badge">⚡ Precio de Lanzamiento</div>
-        <h3>Pro Completo</h3>
-        <div class="price-original">$599 MXN/mes precio regular</div>
-        <div class="price-row"><div class="price-cur">$</div><div class="price-num grad">399</div></div>
-        <div class="price-period">MXN al mes · Cancela cuando quieras</div>
-        <div class="price-saving"><i class="bi bi-tag-fill"></i> Ahorra $2,400 al año</div>
-        <ul class="price-features">
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Pacientes ilimitados</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>LucIA IA completa</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Notas SOAP automáticas</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Alertas de riesgo en tiempo real</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Agenda + sincronización de calendario</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Control financiero completo</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Línea de vida e hitos clínicos</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Plantillas clínicas personalizadas</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Bitácora de auditoría</span></li>
-          <li><i class="bi bi-check-circle-fill" style="color:#27ae60;"></i><span>Soporte prioritario por WhatsApp</span></li>
-        </ul>
-        <a href="checkout.html" class="btn-price main"><i class="bi bi-credit-card-fill" style="margin-right:6px;"></i> Suscribirme por $399/mes</a>
-        <div class="stripe-note"><i class="bi bi-lock-fill"></i> Pago 100% seguro con Stripe · Recibo automático</div>
-      </div>
-    </div>
-    <div class="garantia-box reveal">
-      <div class="gicon">🛡️</div>
-      <div><h3>Garantía de satisfacción — 7 días</h3><p>Si en los primeros 7 días no estás 100% satisfecho con el plan Pro, te devolvemos tu dinero sin preguntas. Así de seguros estamos de lo que construimos. No tienes nada que perder.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="demo" class="py-xl" style="background:var(--bg);">
-  <div class="container" style="text-align:center;">
-    <div class="reveal">
-      <div class="section-label" style="justify-content:center;">Demo</div>
-      <h2 class="section-title">Míralo en acción</h2>
-      <p class="section-sub" style="margin:0 auto 2rem;">2 minutos para ver lo fácil que es organizar toda tu consulta.</p>
-    </div>
-    <div class="demo-placeholder reveal">
-      <div class="play-btn"><i class="bi bi-play-fill" style="font-size:1.8rem;color:white;margin-left:4px;"></i></div>
-      <p style="color:var(--muted);font-size:.875rem;max-width:340px;text-align:center;">Video demo próximamente.<br><span style="font-size:.78rem;">Graba en Loom o YouTube y reemplaza este bloque con el embed iframe.</span></p>
-    </div>
-  </div>
-</section>
-
-<section class="test-bg py-xl">
-  <div class="container">
-    <div class="reveal" style="text-align:center;">
-      <div class="section-label" style="justify-content:center;">Testimonios</div>
-      <h2 class="section-title">Lo que dicen los primeros<br>en probarla</h2>
-    </div>
-    <div class="test-grid">
-      <div class="test-card reveal"><div class="test-stars">★★★★★</div><div class="test-quote">"</div><p class="test-text">Antes tardaba 30 minutos escribiendo notas después de cada sesión. Con LucIA dicto lo que pasó y en 10 segundos tengo el SOAP completo. Es un cambio radical en mi práctica.</p><div class="test-author"><div class="test-av" style="background:rgba(58,123,213,0.1);color:var(--primary);">MP</div><div><div class="test-name">Mtra. Patricia R.</div><div class="test-role">Psicóloga clínica · Guadalajara</div></div></div></div>
-      <div class="test-card reveal"><div class="test-stars">★★★★★</div><div class="test-quote">"</div><p class="test-text">La alerta de riesgo me pareció exagerada al principio. Luego me salvó en una situación real con un paciente. Ya no podría trabajar sin esa función activa.</p><div class="test-author"><div class="test-av" style="background:rgba(46,204,113,0.1);color:#27ae60;">RA</div><div><div class="test-name">Dr. Roberto A.</div><div class="test-role">Psicólogo clínico · CDMX</div></div></div></div>
-      <div class="test-card reveal"><div class="test-stars">★★★★★</div><div class="test-quote">"</div><p class="test-text">Llevaba mi contabilidad en una libreta. Ahora en 3 clics sé exactamente cuánto entró, cuánto falta cobrar y cuánto gasté. No puedo creer que esto cueste $399.</p><div class="test-author"><div class="test-av" style="background:rgba(243,156,18,0.1);color:#d68910;">SL</div><div><div class="test-name">Lic. Sandra L.</div><div class="test-role">Terapeuta familiar · Monterrey</div></div></div></div>
-    </div>
-  </div>
-</section>
-
-<section class="py-xl" style="background:var(--white);">
-  <div class="container">
-    <div class="reveal" style="text-align:center;">
-      <div class="section-label" style="justify-content:center;">Preguntas Frecuentes</div>
-      <h2 class="section-title">¿Tienes dudas?</h2>
-    </div>
-    <div class="faq-wrap reveal">
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">¿Mis expedientes son completamente privados? <span class="ficon">+</span></button><div class="faq-a"><p>Sí. Tus expedientes están cifrados y solo tú tienes acceso. Cumplimos con la LFPDPPP y estándares equivalentes a HIPAA. Ni nosotros como empresa podemos leer el contenido clínico.</p></div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">¿Cómo funciona el pago con Stripe? <span class="ficon">+</span></button><div class="faq-a"><p>Al hacer clic en "Suscribirme" serás redirigido a la página segura de Stripe. Nunca guardamos datos de tu tarjeta. Recibirás comprobante automático por correo cada mes.</p></div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">¿Puedo cancelar en cualquier momento? <span class="ficon">+</span></button><div class="faq-a"><p>Sí, sin penalizaciones ni permanencia mínima. Cancelas desde tu perfil o por WhatsApp y tu acceso continúa hasta el final del período pagado.</p></div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">¿Qué pasa con mis datos si cancelo? <span class="ficon">+</span></button><div class="faq-a"><p>Tienes 30 días para exportar toda tu información en PDF o CSV. Nunca borraremos nada sin avisarte con anticipación.</p></div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">¿Funciona en celular? <span class="ficon">+</span></button><div class="faq-a"><p>Sí. Psicogestor es responsivo y funciona en cualquier dispositivo. No necesitas instalar ninguna app, corre directo desde el navegador.</p></div></div>
-      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)">¿LucIA tiene acceso a datos de otros psicólogos? <span class="ficon">+</span></button><div class="faq-a"><p>Absolutamente no. LucIA opera en un entorno aislado por cuenta. Solo puede acceder a tus expedientes. No existe contaminación cruzada entre usuarios.</p></div></div>
-    </div>
-  </div>
-</section>
-
-<section class="cta-final-bg">
-  <div class="glow"></div>
-  <div class="cta-final-content reveal">
-    <div class="hero-badge" style="margin:0 auto 1.5rem;background:rgba(255,255,255,0.15);border-color:rgba(255,255,255,0.3);color:white;"><span class="badge-dot" style="background:white;"></span> Plazas limitadas de lanzamiento</div>
-    <h2>¿Listo para ordenar tu consulta<br><span style="opacity:.85;">de una vez por todas?</span></h2>
-    <p>Empieza hoy con nuestro plan gratuito. Sin tarjeta. Sin compromisos.<br>Solo tú y tu práctica, finalmente organizadas.</p>
-    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
-      <a href="registro.html" class="btn-cta-white" style="text-decoration:none;"><i class="bi bi-rocket-takeoff-fill"></i> Crear Cuenta Gratis</a>
-      <a href="https://wa.me/526679530936?text=Hola%2C%20me%20interesa%20Psicogestor" target="_blank" class="btn-cta-outline-white"><i class="bi bi-whatsapp"></i> Hablar con un Asesor</a>
-    </div>
-  </div>
-</section>
-
-<footer>
-  <div class="container">
-    <div class="foot-grid">
-      <div>
-        <a href="#" class="nav-brand" style="font-size:1.1rem;">
-          <span class="nav-brand-icon" style="width:28px;height:28px;font-size:.88rem;"><i class="bi bi-brain"></i></span>
-          Psicogestor <span style="font-weight:300;color:var(--muted);font-size:.95rem;">2.0</span>
-        </a>
-        <p class="foot-desc">Plataforma de gestión clínica para psicólogos. Construida por Dev Group Studio, Culiacán, Sinaloa.</p>
-        <div class="foot-social">
-          <a href="https://wa.me/526671234567" target="_blank" style="color:#25d366!important;"><i class="bi bi-whatsapp"></i></a>
-          <a href="#"><i class="bi bi-instagram"></i></a>
-          <a href="#"><i class="bi bi-linkedin"></i></a>
-        </div>
-      </div>
-      <div>
-        <h4>Producto</h4>
-        <a href="#funcionalidades">Funcionalidades</a>
-        <a href="#lucia">LucIA IA</a>
-        <a href="#precios">Precios</a>
-        <a href="#demo">Demo</a>
-        <button onclick="openLoginModal()" style="background:none; border:none; color:var(--muted); font-size:.82rem; padding:0; text-align:left; cursor:pointer;">Iniciar Sesión</button>
-      </div>
-      <div>
-        <h4>Legal</h4>
-        <a href="terminos.html">Términos y Condiciones</a>
-        <a href="privacidad.html">Política y Aviso de Privacidad</a>
-        <a href="privacidad.html#datos-clinicos">Manejo de Datos Clínicos</a>
-      </div>
-      <div>
-        <h4>Soporte</h4>
-        <a href="https://wa.me/526679530936" target="_blank">WhatsApp Directo</a>
-        <a href="mailto:hola@devgroupstudio.xyz">Email Soporte</a>
-        <a href="#">Centro de Ayuda</a>
-        <a href="#">Estado del Sistema</a>
-      </div>
-    </div>
-    <div class="foot-bottom">
-      <p>© 2026 Psicogestor · Dev Group Studio · Culiacán, Sinaloa, México</p>
-      <div class="foot-badges">
-        <span class="foot-badge"><i class="bi bi-shield-check"></i> SSL Cifrado</span>
-        <span class="foot-badge"><i class="bi bi-check-circle-fill"></i> LFPDPPP</span>
-        <span class="foot-badge"><i class="bi bi-cloud-fill"></i> 99.9% Uptime</span>
-        <span class="foot-badge stripe"><i class="bi bi-credit-card-fill"></i> Stripe Secure</span>
-      </div>
-    </div>
-  </div>
-</footer>
-
-<a href="https://wa.me/526671234567?text=Hola%2C%20me%20interesa%20Psicogestor%202.0" target="_blank" class="wa-float" title="Chatea con nosotros"><i class="bi bi-whatsapp"></i></a>
-
-<div class="modal-overlay" id="loginModal">
-    <div class="login-modal">
-        <button class="close-btn" onclick="closeLoginModal()"><i class="bi bi-x-lg"></i></button>
-        <div style="text-align:center; margin-bottom:1.5rem;">
-            <div class="nav-brand-icon" style="margin: 0 auto 10px; width:48px; height:48px; font-size:1.5rem;"><i class="bi bi-brain"></i></div>
-            <h3 style="font-family:'Playfair Display',serif; margin:0; color:var(--text);">Bienvenido</h3>
-            <p style="color:var(--muted); font-size:0.9rem; margin-top:5px;">Inicia sesión en tu cuenta</p>
-        </div>
-        <form class="login-form" onsubmit="event.preventDefault(); doLogin();">
-            <label style="font-size:0.8rem; font-weight:700; color:var(--muted); text-transform:uppercase;">Correo Electrónico</label>
-            <input type="email" id="login-email" class="form-control" placeholder="doctor@clinica.com" required>
-            
-            <label style="font-size:0.8rem; font-weight:700; color:var(--muted); text-transform:uppercase;">Contraseña</label>
-            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
-            
-            <div id="login-error" style="color:#e74c3c; font-size:0.85rem; margin-bottom:1rem; display:none; text-align:center; background:#fdf0ed; padding:8px; border-radius:6px; font-weight:500;">
-                <i class="bi bi-exclamation-triangle-fill"></i> Credenciales incorrectas.
-            </div>
-            
-            <button type="submit" id="login-submit-btn" class="btn-cta-primary" style="width:100%; justify-content:center;">Ingresar al Sistema</button>
-            <p style="text-align:center; font-size:0.85rem; color:var(--muted); margin-top:1rem;">¿Aún no tienes cuenta? <a href="registro.html" style="color:var(--primary); font-weight:600; text-decoration:none;">Regístrate</a></p>
-        </form>
-    </div>
-</div>
-
-<script>
-const navbar=document.getElementById('navbar');
-window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled',window.scrollY>40));
-const observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')}),{threshold:.1});
-document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
-function toggleFaq(btn){const ans=btn.nextElementSibling,open=btn.classList.contains('open');document.querySelectorAll('.faq-q').forEach(b=>{b.classList.remove('open');b.nextElementSibling.classList.remove('open')});if(!open){btn.classList.add('open');ans.classList.add('open')}}
-(function(){let dl=parseInt(localStorage.getItem('psico_dl')||0);if(!dl||dl<Date.now()){dl=Date.now()+48*3600*1000;localStorage.setItem('psico_dl',dl)}function tick(){const diff=Math.max(0,dl-Date.now());document.getElementById('timer-h').textContent=String(Math.floor(diff/3600000)).padStart(2,'0');document.getElementById('timer-m').textContent=String(Math.floor((diff%3600000)/60000)).padStart(2,'0');document.getElementById('timer-s').textContent=String(Math.floor((diff%60000)/1000)).padStart(2,'0')}tick();setInterval(tick,1000)})();
-document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',e=>{const t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();window.scrollTo({top:t.offsetTop-75,behavior:'smooth'})}}));
-
-/* --------------------------------------------------------
-   LÓGICA SUPABASE Y SMART PORTAL
--------------------------------------------------------- */
-const SUPABASE_URL = 'https://adbklyrecnyryusktftr.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYmtseXJlY255cnl1c2t0ZnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjQ5MTIsImV4cCI6MjA5MDg0MDkxMn0.sK3cbVoRX1PjQx9Me-9PTFXq0wEpWB1JR7EuVby4Gpw';
-const spb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-async function checkSession() {
-    const { data: { session } } = await spb.auth.getSession();
-    const guestHero = document.getElementById('guest-hero');
-    const userDash = document.getElementById('user-dashboard');
-    const navAuth = document.getElementById('nav-auth-section');
-
-    if (session) {
-        // MODO USUARIO AUTENTICADO
-        guestHero.classList.add('d-none');
-        userDash.classList.remove('d-none');
+    try:
+        # Forzamos que el profesional_id sea el del token, no el que manden en el JSON
+        datos = paciente.model_dump()
+        datos["profesional_id"] = user_id
         
-        const name = session.user.user_metadata?.full_name || session.user.email.split('@')[0];
-        document.getElementById('user-welcome-name').innerText = `Hola, Dr. ${name}`;
-        
-        // Actualizar Navbar
-        navAuth.innerHTML = `
-            <div style="display:flex; align-items:center; gap:15px;">
-                <span style="font-weight:600; font-size:0.9rem; color:var(--text); display:none;">Dr. ${name}</span>
-                <a href="dashboard.html" class="btn-nav">Ir al Dashboard →</a>
-                <button onclick="doLogout()" style="background:none; border:none; color:var(--muted); font-size:1.2rem; cursor:pointer; margin-left:5px;" title="Cerrar Sesión"><i class="bi bi-box-arrow-right"></i></button>
-            </div>
-        `;
-        
-        // Cargar cita en el mini-dashboard
-        loadNextAppointment(session.user.id);
-    } else {
-        // MODO INVITADO
-        guestHero.classList.remove('d-none');
-        userDash.classList.add('d-none');
-        navAuth.innerHTML = `<button onclick="openLoginModal()" class="btn-nav">Iniciar Sesión →</button>`;
-    }
-}
+        respuesta = supabase.table("pacientes").insert(datos).execute()
+        return {"status": "success", "mensaje": "Expediente creado", "datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
-async function loadNextAppointment(profesionalId) {
-    const container = document.getElementById('quick-next-appointment');
-    try {
-        const todayS = new Date(); todayS.setHours(0, 0, 0, 0);
-        const todayE = new Date(); todayE.setHours(23, 59, 59, 999);
-        const { data } = await spb.from('citas')
-            .select('fecha_hora, modalidad, pacientes(nombre)')
-            .eq('profesional_id', profesionalId)
-            .eq('estado', 'programada')
-            .gte('fecha_hora', todayS.toISOString())
-            .lte('fecha_hora', todayE.toISOString())
-            .order('fecha_hora', { ascending: true })
-            .limit(1);
-            
-        if (data && data.length > 0) {
-            const cita = data[0];
-            const hora = new Date(cita.fecha_hora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-            const nombre = cita.pacientes ? (Array.isArray(cita.pacientes) ? cita.pacientes[0].nombre : cita.pacientes.nombre) : 'Paciente';
-            container.innerHTML = `
-                <div style="font-size: 1.25rem; font-weight: 700; color: var(--text);">${nombre}</div>
-                <div style="color: var(--primary); font-size: 0.9rem; margin-top: 4px; font-weight:600;">Hoy a las ${hora} · <span style="text-transform:capitalize;">${cita.modalidad}</span></div>
-            `;
-            document.getElementById('lucia-concierge-msg').innerText = `He analizado el expediente de ${nombre}. Tienes compromisos pendientes de la sesión anterior. Entra al panel para ver el resumen pre-sesión.`;
-        } else {
-            container.innerHTML = `<div style="color:var(--muted); font-size:0.95rem;"><i class="bi bi-check-circle-fill text-success me-1"></i> No tienes citas programadas para el resto del día.</div>`;
-            document.getElementById('lucia-concierge-msg').innerText = `He revisado tus expedientes de hoy. Todo está en orden. Haz clic abajo para entrar al panel y gestionar tu consulta.`;
+@app.get("/api/pacientes")
+async def listar_pacientes(request: Request):
+    # Ya no ocupamos doctor_id en la URL, lo sacamos del Token
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
+    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
+    
+    try:
+        respuesta = supabase.table("pacientes").select("*").eq("profesional_id", user_id).execute()
+        return {"status": "success", "pacientes": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+# ==========================================
+# 6. ENDPOINTS — PLANTILLAS
+# ==========================================
+
+@app.post("/api/plantillas")
+async def crear_plantilla(plantilla: PlantillaCreate, request: Request) -> dict[str, Any]:
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
+    user_id = verificar_token_y_plan(token, plan_requerido="pro") 
+    
+    try:
+        respuesta = supabase.table("plantillas").insert({
+            "profesional_id": user_id, 
+            "nombre_plantilla": plantilla.nombre_plantilla,
+            "campos": plantilla.campos
+        }).execute()
+        return {"status": "success", "mensaje": "Plantilla guardada", "data": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+@app.get("/api/plantillas")
+async def obtener_plantillas(request: Request) -> dict[str, Any]:
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
+    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
+    
+    try:
+        respuesta = supabase.table("plantillas").select("*").eq("profesional_id", user_id).execute()
+        return {"status": "success", "plantillas": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+# ==========================================
+# 7. ENDPOINTS — CITAS Y SESIONES
+# ==========================================
+
+@app.post("/api/citas")
+async def crear_cita(cita: CitaCreate, request: Request) -> dict[str, Any]:
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
+    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
+
+    try:
+        fecha_hora_iso = f"{cita.fecha}T{cita.hora}:00-07:00"
+        payload = {
+            "paciente_id": cita.paciente,
+            "profesional_id": user_id,
+            "fecha_hora": fecha_hora_iso,
+            "tipo_consulta": cita.tipo,
+            "modalidad": cita.modalidad,
+            "notas_previas": cita.notas,
+            "sync_google": cita.sync,
+            "estado": "programada"
         }
-    } catch (e) {
-        container.innerHTML = `<div style="color:var(--muted); font-size:0.9rem;">No se pudo cargar la agenda.</div>`;
+        respuesta = supabase.table("citas").insert(payload).execute()
+        return {"status": "success", "mensaje": "Cita guardada", "datos": respuesta.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/sesiones/analizar")
+async def analizar_sesion(sesion: SesionAnalisis) -> dict[str, Any]:
+    if not ai_client:
+        raise HTTPException(status_code=500, detail="Gemini API no configurada")
+
+    prompt_sistema = """
+Eres un asistente clínico para psicólogos. Analiza esta sesión SOAP.
+Devuelve ÚNICAMENTE un JSON con esta estructura exacta, sin markdown ni texto extra:
+{
+    "ia_resumen_ejecutivo": "Un párrafo de máximo 3 líneas.",
+    "ia_nube_conceptos": ["concepto1", "concepto2"],
+    "ia_puntaje_animo": 8,
+    "ia_puntaje_ansiedad": 4,
+    "ia_alerta_riesgo": false
+}
+"""
+    texto = f"S: {sesion.s}\nO: {sesion.o}\nA: {sesion.a}\nP: {sesion.p}"
+
+    modelos = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+    for modelo in modelos:
+        try:
+            response = ai_client.models.generate_content(
+                model=modelo,
+                contents=texto,
+                config=types.GenerateContentConfig(
+                    system_instruction=prompt_sistema,
+                    response_mime_type="application/json",
+                )
+            )
+            analisis_json = json.loads(response.text)
+            return {"status": "success", "analisis": analisis_json}
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                continue
+            raise HTTPException(status_code=500, detail=f"Error IA: {err_str}")
+    raise HTTPException(status_code=429, detail="Cuota de Gemini agotada.")
+
+# ==========================================
+# 8. ENDPOINT — SOAP AUTOMÁTICO ✅ PRINCIPAL
+# ==========================================
+
+@app.post("/api/soap/estructurar")
+async def estructurar_soap(payload: SoapTextoLibre, request: Request) -> dict[str, Any]:
+    """
+    Recibe texto libre de notas de sesión y devuelve estructura SOAP.
+    Requiere Plan Pro.
+    Body JSON esperado: { "texto": "..." }
+    Header esperado: Authorization: Bearer <supabase_access_token>
+    """
+    if not ai_client:
+        raise HTTPException(status_code=500, detail="Gemini API no configurada. Revisa GEMINI_API_KEY en .env")
+
+    # Extraer token
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Se requiere Authorization: Bearer <token>")
+
+    token = auth_header.split(" ", 1)[1]
+
+    # Verificar usuario y plan Pro
+    user_id = verificar_token_y_plan(token, plan_requerido="pro")
+
+    # Validar texto
+    texto = payload.texto.strip()
+    if not texto:
+        raise HTTPException(status_code=400, detail="El campo 'texto' no puede estar vacío")
+
+    prompt_sistema = """
+Eres un asistente clínico experto en psicología.
+A partir del texto libre de notas de sesión que recibirás, extrae y organiza la información en formato SOAP.
+
+Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta, sin texto adicional, sin markdown, sin backticks:
+{
+  "s": "Subjetivo: lo que refiere el paciente en sus propias palabras",
+  "o": "Objetivo: lo que el clínico observa conductual y emocionalmente",
+  "a": "Análisis: evaluación clínica e interpretación diagnóstica",
+  "p": "Plan: próximos pasos, tareas y objetivos terapéuticos"
+}
+
+Si alguna sección no tiene información suficiente, indica: "No se menciona en la nota."
+"""
+
+    try:
+        print(f"[SOAP] Procesando nota para usuario {user_id}. Longitud: {len(texto)} chars")
+
+        # Modelos en orden de preferencia (fallback automático)
+        modelos_candidatos = [
+        "gemini-3.0-flash",
+        "gemini-2.5-flash",
+        "gemini-1.5-flash",
+        ]
+
+        response = None
+        ultimo_error = None
+
+        for modelo in modelos_candidatos:
+            try:
+                print(f"[SOAP] Intentando con modelo: {modelo}")
+                response = ai_client.models.generate_content(
+                    model=modelo,
+                    contents=texto,
+                    config=types.GenerateContentConfig(
+                        system_instruction=prompt_sistema,
+                        response_mime_type="application/json",
+                    )
+                )
+                print(f"[SOAP] ✅ Éxito con modelo: {modelo}")
+                break  # Si funciona, salir del loop
+            except Exception as e:
+                ultimo_error = e
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                    print(f"[SOAP] ⚠️ Cuota agotada en {modelo}, probando siguiente...")
+                    continue  # Intentar con el siguiente modelo
+                else:
+                    # Error distinto a cuota — no tiene caso reintentar
+                    raise e
+
+        if response is None:
+            raise HTTPException(
+                status_code=429,
+                detail="Cuota de Gemini API agotada en todos los modelos disponibles. Activa facturación en https://ai.google.dev o espera unos minutos e intenta de nuevo."
+            )
+
+        raw = response.text.strip()
+
+        # Limpiar por si Gemini agrega markdown
+        if raw.startswith("```"):
+            partes = raw.split("```")
+            raw = partes[1] if len(partes) > 1 else raw
+            raw = raw.replace("json", "", 1).strip()
+
+        soap = json.loads(raw)
+
+        # Garantizar que todas las claves existen
+        for key in ("s", "o", "a", "p"):
+            if key not in soap or not soap[key]:
+                soap[key] = "No se menciona en la nota."
+
+        print(f"[SOAP] ✅ Estructurado correctamente para usuario {user_id}")
+        return {"status": "success", "soap": soap}
+
+    except HTTPException:
+        raise  # Re-lanzar HTTPExceptions sin modificar
+    except json.JSONDecodeError as e:
+        print(f"[SOAP] ❌ Error JSON: {response.text if response else 'sin respuesta'}")
+        raise HTTPException(status_code=500, detail=f"Error al parsear respuesta de IA: {str(e)}")
+    except Exception as e:
+        err_str = str(e)
+        print(f"[SOAP] ❌ Error general: {err_str}")
+        # Mensaje amigable para error de cuota
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+            raise HTTPException(
+                status_code=429,
+                detail="Cuota de Gemini API agotada. Activa facturación en https://aistudio.google.com o espera unos minutos."
+            )
+        raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {err_str}")
+
+# ==========================================
+# 9. ENDPOINT — CHAT LucIA
+# ==========================================
+
+@app.post("/api/chat")
+async def chat_lucia(chat: MensajeChat, request: Request) -> dict[str, Any]:
+    if not ai_client:
+        raise HTTPException(status_code=500, detail="Gemini API no configurada")
+
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Se requiere Authorization: Bearer <token>")
+
+    token = auth_header.split(" ", 1)[1]
+    user_id = verificar_token_y_plan(token, plan_requerido="pro")
+
+    # Cargar contexto clínico del profesional
+    try:
+        pacientes_db = supabase.table("pacientes") \
+            .select("id, nombre, motivo_consulta") \
+            .eq("profesional_id", user_id) \
+            .execute()
+
+        sesiones_db = supabase.table("sesiones") \
+            .select("paciente_id, fecha, subjetivo, analisis, plan") \
+            .eq("profesional_id", user_id) \
+            .order("fecha", desc=True) \
+            .limit(30) \
+            .execute()
+
+        sesiones_por_paciente: dict = {}
+        for s in (sesiones_db.data or []):
+            pid = s.get("paciente_id")
+            if pid not in sesiones_por_paciente:
+                sesiones_por_paciente[pid] = []
+            sesiones_por_paciente[pid].append(s)
+
+        contexto = "=== EXPEDIENTES CLÍNICOS ===\n\n"
+        for p in (pacientes_db.data or []):
+            pid = p.get("id")
+            contexto += f"PACIENTE: {p.get('nombre')}\n"
+            contexto += f"Motivo: {p.get('motivo_consulta')}\n"
+            notas = sesiones_por_paciente.get(pid, [])
+            for n in notas[:3]:
+                fecha = n.get("fecha", "")[:10]
+                contexto += f"  Sesión {fecha}: {n.get('subjetivo','—')} | Plan: {n.get('plan','—')}\n"
+            contexto += "\n"
+    except Exception as e:
+        contexto = f"Error al cargar expedientes: {str(e)}"
+
+    prompt_sistema = f"""
+Eres LucIA, asistente de IA clínica de Psicogestor.
+Hablas con un psicólogo profesional. Sé directo, clínico y conciso.
+No te presentes en cada mensaje. Responde con precisión.
+
+CONTEXTO DE EXPEDIENTES:
+{contexto}
+"""
+
+    modelos = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    for modelo in modelos:
+        try:
+            response = ai_client.models.generate_content(
+                model=modelo,
+                contents=chat.mensaje,
+                config=types.GenerateContentConfig(system_instruction=prompt_sistema)
+            )
+            return {"status": "success", "respuesta": response.text}
+        except Exception as e:
+            err_str = str(e)
+            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+                print(f"[CHAT] Cuota agotada en {modelo}, probando siguiente...")
+                continue
+            raise HTTPException(status_code=500, detail=err_str)
+    raise HTTPException(
+        status_code=429,
+        detail="Cuota de Gemini API agotada. Activa facturacion en https://aistudio.google.com"
+    )
+
+# ==========================================
+# 10. ENDPOINT — CALENDARIO .ICS
+# ==========================================
+
+@app.get("/api/calendario/{profesional_id}/psicogestor.ics")
+async def feed_calendario(profesional_id: str, request: Request):
+    try:
+        respuesta = supabase.table("citas") \
+            .select("*, pacientes(nombre)") \
+            .eq("profesional_id", profesional_id) \
+            .eq("estado", "programada") \
+            .execute()
+        citas = respuesta.data or []
+
+        base_url = str(request.base_url).rstrip("/")
+        webcal_url = base_url.replace("https://", "webcal://").replace("http://", "webcal://")
+
+        ics = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Dev Group Studio//Psicogestor 2.0//ES",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            "X-WR-CALNAME:Psicogestor - Agenda",
+            "X-WR-TIMEZONE:UTC",
+            f"X-WR-CALID:{webcal_url}/api/calendario/{profesional_id}/psicogestor.ics",
+            "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+            "X-PUBLISHED-TTL:PT15M"
+        ]
+
+        for cita in citas:
+            try:
+                fecha_dt = datetime.fromisoformat(cita["fecha_hora"].replace("Z", "+00:00"))
+                start = fecha_dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+                end   = (fecha_dt.astimezone(timezone.utc) + timedelta(hours=1)).strftime("%Y%m%dT%H%M%SZ")
+                stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+                pac = cita.get("pacientes")
+                if isinstance(pac, list) and pac:
+                    nombre_p = pac[0].get("nombre", "Paciente")
+                elif isinstance(pac, dict):
+                    nombre_p = pac.get("nombre", "Paciente")
+                else:
+                    nombre_p = "Paciente"
+
+                modalidad = cita.get("modalidad") or "Presencial"
+                notas     = str(cita.get("notas_previas") or "Sin notas").replace("\n", "\\n").replace("\r", "")
+
+                ics += [
+                    "BEGIN:VEVENT",
+                    f"UID:cita_{cita['id']}@psicogestor.com",
+                    f"DTSTAMP:{stamp}",
+                    f"DTSTART:{start}",
+                    f"DTEND:{end}",
+                    f"SUMMARY:Sesión con {nombre_p}",
+                    f"DESCRIPTION:Modalidad: {modalidad}\\nNotas: {notas}",
+                    f"LOCATION:{modalidad}",
+                    "END:VEVENT"
+                ]
+            except Exception as e_cita:
+                print(f"[CAL] Error en cita {cita.get('id')}: {e_cita}")
+                continue
+
+        ics.append("END:VCALENDAR")
+
+        return Response(
+            content="\r\n".join(ics),
+            media_type="text/calendar",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+                "Content-Disposition": "attachment; filename=psicogestor.ics"
+            }
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==========================================
+# 11. ENDPOINTS — STRIPE / PAGOS
+# ==========================================
+
+@app.post("/api/crear-checkout")
+async def crear_checkout(request: Request):
+    # 1. EXTRAER TOKEN Y VERIFICAR SESIÓN
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Debes iniciar sesión para realizar un pago.")
+    
+    token = auth_header.split(" ", 1)[1]
+    # Verificamos que el usuario existe (plan_requerido="gratis" porque aún no es Pro)
+    user_id = verificar_token_y_plan(token, plan_requerido="gratis")
+
+    if not STRIPE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Stripe no configurado en el servidor.")
+
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
+            mode="subscription",
+            success_url=f"{base_url}/app/dashboard.html?pago=exitoso",
+            cancel_url=f"{base_url}/app/checkout.html?pago=cancelado",
+            client_reference_id=user_id  # Usamos el ID verificado del token
+        )
+        return JSONResponse(content={"url": session.url})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/api/webhook/stripe")
+async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+    if not STRIPE_WEBHOOK_SECRET:
+        raise HTTPException(status_code=500, detail="Falta webhook secret de Stripe.")
+
+    payload = await request.body()
+
+    try:
+        event = stripe.Webhook.construct_event(payload, stripe_signature, STRIPE_WEBHOOK_SECRET)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma inválida")
+
+    if event["type"] == "checkout.session.completed":
+        session      = event["data"]["object"]
+        usuario_id   = session.get("client_reference_id")
+        customer_id  = session.get("customer")
+        customer_email = session.get("customer_details", {}).get("email")
+
+        print(f"[STRIPE] ✅ Pago exitoso — usuario: {usuario_id} — email: {customer_email}")
+
+        if usuario_id:
+            try:
+                supabase.table("perfiles_profesionales").update({
+                    "tipo_plan": "pro",
+                    "stripe_customer_id": customer_id
+                }).eq("id", usuario_id).execute()
+                print(f"[STRIPE] Usuario {usuario_id} actualizado a PRO en Supabase.")
+            except Exception as e:
+                print(f"[STRIPE] ❌ Error actualizando Supabase: {e}")
+
+    elif event["type"] == "customer.subscription.deleted":
+        print("[STRIPE] Suscripción cancelada.")
+
+    return {"status": "success"}
+
+# ==========================================
+# 12. HEALTH CHECK
+# ==========================================
+
+@app.get("/api/health")
+async def health():
+    return {
+        "status": "ok",
+        "gemini": bool(ai_client),
+        "stripe": bool(STRIPE_SECRET_KEY),
+        "supabase": bool(SUPABASE_URL and SUPABASE_KEY)
     }
-}
-
-function openLoginModal() {
-    const modal = document.getElementById('loginModal');
-    modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('show'), 10);
-}
-
-function closeLoginModal() {
-    const modal = document.getElementById('loginModal');
-    modal.classList.remove('show');
-    setTimeout(() => modal.style.display = 'none', 300);
-}
-
-async function doLogin() {
-    const email = document.getElementById('login-email').value;
-    const pass = document.getElementById('login-password').value;
-    const btn = document.getElementById('login-submit-btn');
-    const err = document.getElementById('login-error');
-    
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" style="width:1rem; height:1rem; border-width:0.15em;"></span> Verificando...';
-    btn.disabled = true;
-    err.style.display = 'none';
-    
-    const { error } = await spb.auth.signInWithPassword({ email, password: pass });
-    
-    if (error) {
-        err.style.display = 'block';
-        btn.innerHTML = 'Ingresar al Sistema';
-        btn.disabled = false;
-    } else {
-        btn.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Acceso Correcto';
-        btn.style.background = '#27ae60';
-        btn.style.boxShadow = '0 4px 14px rgba(39, 174, 96, 0.35)';
-        
-        setTimeout(() => {
-            closeLoginModal();
-            checkSession();
-            // Reset button state for future
-            btn.innerHTML = 'Ingresar al Sistema';
-            btn.style.background = 'var(--grad)';
-            btn.style.boxShadow = '0 4px 16px rgba(58,123,213,0.35)';
-            btn.disabled = false;
-            document.getElementById('login-password').value = '';
-        }, 800);
-    }
-}
-
-async function doLogout() {
-    await spb.auth.signOut();
-    checkSession();
-}
-
-// Ejecutar al cargar la página
-checkSession();
-</script>
-</body>
-</html>
