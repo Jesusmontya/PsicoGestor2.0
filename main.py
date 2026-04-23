@@ -56,13 +56,12 @@ ai_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 # ==========================================
 # 2. FRONTEND ESTÁTICO
 # ==========================================
-# Asegúrate de que exista la carpeta public/ con tus HTML
 app.mount("/app", StaticFiles(directory="public", html=True), name="public")
 
 @app.get("/")
 async def root():
-    # Ahora la raíz redirige a la Landing Page en lugar del Login
     return RedirectResponse(url="/app/index.html")
+
 # ==========================================
 # 3. MODELOS PYDANTIC
 # ==========================================
@@ -110,18 +109,13 @@ class PlantillaCreate(BaseModel):
     campos: List[Dict[str, Any]]
 
 class SoapTextoLibre(BaseModel):
-    texto: str  # IMPORTANTE: debe llamarse "texto" para coincidir con el frontend
+    texto: str  
 
 # ==========================================
 # 4. HELPER: VERIFICAR USUARIO Y PLAN
 # ==========================================
 
 def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
-    """
-    Verifica el token JWT de Supabase.
-    Devuelve el user_id si es válido.
-    Lanza HTTPException si el token es inválido o el plan no es suficiente.
-    """
     try:
         user_response = supabase.auth.get_user(token)
         user_id = user_response.user.id
@@ -159,13 +153,11 @@ def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
 
 @app.post("/api/pacientes")
 async def registrar_paciente(paciente: PacienteNuevo, request: Request):
-    # Verificamos que sea un usuario real (aunque sea plan gratis)
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
     user_id = verificar_token_y_plan(token, plan_requerido="gratis")
     
     try:
-        # Forzamos que el profesional_id sea el del token, no el que manden en el JSON
         datos = paciente.model_dump()
         datos["profesional_id"] = user_id
         
@@ -176,7 +168,6 @@ async def registrar_paciente(paciente: PacienteNuevo, request: Request):
 
 @app.get("/api/pacientes")
 async def listar_pacientes(request: Request):
-    # Ya no ocupamos doctor_id en la URL, lo sacamos del Token
     auth_header = request.headers.get("Authorization", "")
     token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
     user_id = verificar_token_y_plan(token, plan_requerido="gratis")
@@ -264,7 +255,8 @@ Devuelve ÚNICAMENTE un JSON con esta estructura exacta, sin markdown ni texto e
 """
     texto = f"S: {sesion.s}\nO: {sesion.o}\nA: {sesion.a}\nP: {sesion.p}"
 
-    modelos = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+    # CORRECCIÓN: Modelos actualizados a los disponibles
+    modelos = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     for modelo in modelos:
         try:
             response = ai_client.models.generate_content(
@@ -278,11 +270,13 @@ Devuelve ÚNICAMENTE un JSON con esta estructura exacta, sin markdown ni texto e
             analisis_json = json.loads(response.text)
             return {"status": "success", "analisis": analisis_json}
         except Exception as e:
-            err_str = str(e)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
+            err_str = str(e).lower()
+            # CORRECCIÓN: Ahora también ignora el error si el modelo no existe (404/400) y pasa al siguiente
+            if any(err in err_str for err in ["429", "exhausted", "503", "unavailable", "404", "not found", "400"]):
+                print(f"[ANALISIS] Falló {modelo}, probando siguiente... ({err_str})")
                 continue
-            raise HTTPException(status_code=500, detail=f"Error IA: {err_str}")
-    raise HTTPException(status_code=429, detail="Cuota de Gemini agotada.")
+            raise HTTPException(status_code=500, detail=f"Error IA: {str(e)}")
+    raise HTTPException(status_code=429, detail="Cuota de Gemini agotada o modelos no disponibles.")
 
 # ==========================================
 # 8. ENDPOINT — SOAP AUTOMÁTICO ✅ PRINCIPAL
@@ -290,26 +284,16 @@ Devuelve ÚNICAMENTE un JSON con esta estructura exacta, sin markdown ni texto e
 
 @app.post("/api/soap/estructurar")
 async def estructurar_soap(payload: SoapTextoLibre, request: Request) -> dict[str, Any]:
-    """
-    Recibe texto libre de notas de sesión y devuelve estructura SOAP.
-    Requiere Plan Pro.
-    Body JSON esperado: { "texto": "..." }
-    Header esperado: Authorization: Bearer <supabase_access_token>
-    """
     if not ai_client:
         raise HTTPException(status_code=500, detail="Gemini API no configurada. Revisa GEMINI_API_KEY en .env")
 
-    # Extraer token
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Se requiere Authorization: Bearer <token>")
 
     token = auth_header.split(" ", 1)[1]
-
-    # Verificar usuario y plan Pro
     user_id = verificar_token_y_plan(token, plan_requerido="pro")
 
-    # Validar texto
     texto = payload.texto.strip()
     if not texto:
         raise HTTPException(status_code=400, detail="El campo 'texto' no puede estar vacío")
@@ -332,16 +316,14 @@ Si alguna sección no tiene información suficiente, indica: "No se menciona en 
     try:
         print(f"[SOAP] Procesando nota para usuario {user_id}. Longitud: {len(texto)} chars")
 
-        # Modelos en orden de preferencia (fallback automático)
+        # CORRECCIÓN: Modelos actualizados
         modelos_candidatos = [
-        "gemini-3.0-flash",
-        "gemini-2.5-flash",
-        "gemini-1.5-flash",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro",
         ]
 
         response = None
-        ultimo_error = None
-
         for modelo in modelos_candidatos:
             try:
                 print(f"[SOAP] Intentando con modelo: {modelo}")
@@ -354,26 +336,24 @@ Si alguna sección no tiene información suficiente, indica: "No se menciona en 
                     )
                 )
                 print(f"[SOAP] ✅ Éxito con modelo: {modelo}")
-                break  # Si funciona, salir del loop
+                break 
             except Exception as e:
-                ultimo_error = e
-                err_str = str(e)
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                    print(f"[SOAP] ⚠️ Cuota agotada en {modelo}, probando siguiente...")
-                    continue  # Intentar con el siguiente modelo
+                err_str = str(e).lower()
+                # CORRECCIÓN: Ampliado para tolerar "Model not found" (400 o 404)
+                if any(err in err_str for err in ["429", "exhausted", "503", "unavailable", "404", "not found", "400"]):
+                    print(f"[SOAP] ⚠️ Falló {modelo} (Error: {err_str}), probando siguiente...")
+                    continue 
                 else:
-                    # Error distinto a cuota — no tiene caso reintentar
                     raise e
 
         if response is None:
             raise HTTPException(
                 status_code=429,
-                detail="Cuota de Gemini API agotada en todos los modelos disponibles. Activa facturación en https://ai.google.dev o espera unos minutos e intenta de nuevo."
+                detail="Cuota de Gemini API agotada en todos los modelos disponibles. Activa facturación en https://aistudio.google.com"
             )
 
         raw = response.text.strip()
 
-        # Limpiar por si Gemini agrega markdown
         if raw.startswith("```"):
             partes = raw.split("```")
             raw = partes[1] if len(partes) > 1 else raw
@@ -381,7 +361,6 @@ Si alguna sección no tiene información suficiente, indica: "No se menciona en 
 
         soap = json.loads(raw)
 
-        # Garantizar que todas las claves existen
         for key in ("s", "o", "a", "p"):
             if key not in soap or not soap[key]:
                 soap[key] = "No se menciona en la nota."
@@ -390,19 +369,15 @@ Si alguna sección no tiene información suficiente, indica: "No se menciona en 
         return {"status": "success", "soap": soap}
 
     except HTTPException:
-        raise  # Re-lanzar HTTPExceptions sin modificar
+        raise 
     except json.JSONDecodeError as e:
         print(f"[SOAP] ❌ Error JSON: {response.text if response else 'sin respuesta'}")
         raise HTTPException(status_code=500, detail=f"Error al parsear respuesta de IA: {str(e)}")
     except Exception as e:
         err_str = str(e)
         print(f"[SOAP] ❌ Error general: {err_str}")
-        # Mensaje amigable para error de cuota
         if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-            raise HTTPException(
-                status_code=429,
-                detail="Cuota de Gemini API agotada. Activa facturación en https://aistudio.google.com o espera unos minutos."
-            )
+            raise HTTPException(status_code=429, detail="Cuota de Gemini API agotada.")
         raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {err_str}")
 
 # ==========================================
@@ -421,7 +396,6 @@ async def chat_lucia(chat: MensajeChat, request: Request) -> dict[str, Any]:
     token = auth_header.split(" ", 1)[1]
     user_id = verificar_token_y_plan(token, plan_requerido="pro")
 
-    # Cargar contexto clínico del profesional
     try:
         pacientes_db = supabase.table("pacientes") \
             .select("id, nombre, motivo_consulta") \
@@ -449,11 +423,13 @@ async def chat_lucia(chat: MensajeChat, request: Request) -> dict[str, Any]:
             contexto += f"Motivo: {p.get('motivo_consulta')}\n"
             notas = sesiones_por_paciente.get(pid, [])
             for n in notas[:3]:
-                fecha = n.get("fecha", "")[:10]
+                # CORRECCIÓN: Evita el error 'NoneType' si la fecha no existe en la DB
+                fecha = str(n.get("fecha") or "")[:10]
                 contexto += f"  Sesión {fecha}: {n.get('subjetivo','—')} | Plan: {n.get('plan','—')}\n"
             contexto += "\n"
     except Exception as e:
-        contexto = f"Error al cargar expedientes: {str(e)}"
+        print(f"[CHAT] Error armando contexto: {e}")
+        contexto = f"Error al cargar expedientes."
 
     prompt_sistema = f"""
 Eres LucIA, asistente de IA clínica de Psicogestor.
@@ -464,7 +440,8 @@ CONTEXTO DE EXPEDIENTES:
 {contexto}
 """
 
-    modelos = ["gemini-3.0-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    # CORRECCIÓN: Modelos válidos
+    modelos = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     for modelo in modelos:
         try:
             response = ai_client.models.generate_content(
@@ -474,14 +451,17 @@ CONTEXTO DE EXPEDIENTES:
             )
             return {"status": "success", "respuesta": response.text}
         except Exception as e:
-            err_str = str(e)
-            if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str or "UNAVAILABLE" in err_str:
-                print(f"[CHAT] Cuota agotada en {modelo}, probando siguiente...")
+            err_str = str(e).lower()
+            # CORRECCIÓN: Fallback mejorado
+            if any(err in err_str for err in ["429", "exhausted", "503", "unavailable", "404", "not found", "400"]):
+                print(f"[CHAT] Error o modelo {modelo} no disponible. Probando siguiente...")
                 continue
-            raise HTTPException(status_code=500, detail=err_str)
+            print(f"[CHAT] Error grave: {err_str}")
+            raise HTTPException(status_code=500, detail=str(e))
+            
     raise HTTPException(
         status_code=429,
-        detail="Cuota de Gemini API agotada. Activa facturacion en https://aistudio.google.com"
+        detail="Cuota de Gemini API agotada o modelos no disponibles."
     )
 
 # ==========================================
@@ -570,13 +550,11 @@ async def feed_calendario(profesional_id: str, request: Request):
 
 @app.post("/api/crear-checkout")
 async def crear_checkout(request: Request):
-    # 1. EXTRAER TOKEN Y VERIFICAR SESIÓN
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Debes iniciar sesión para realizar un pago.")
     
     token = auth_header.split(" ", 1)[1]
-    # Verificamos que el usuario existe (plan_requerido="gratis" porque aún no es Pro)
     user_id = verificar_token_y_plan(token, plan_requerido="gratis")
 
     if not STRIPE_SECRET_KEY:
@@ -590,7 +568,7 @@ async def crear_checkout(request: Request):
             mode="subscription",
             success_url=f"{base_url}/app/dashboard.html?pago=exitoso",
             cancel_url=f"{base_url}/app/checkout.html?pago=cancelado",
-            client_reference_id=user_id  # Usamos el ID verificado del token
+            client_reference_id=user_id 
         )
         return JSONResponse(content={"url": session.url})
     except Exception as e:
