@@ -27,7 +27,7 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 STRIPE_PRICE_ID     = os.getenv("STRIPE_PRICE_ID", "price_1TNi4nCSdv7aogFNHp8XAqjc")
 
 if STRIPE_SECRET_KEY:
-    stripe.api_key = STRIPE_SECRET_KEY
+    stripe.api_key = STRIPE_SECRET_KEY.strip()
 else:
     print("⚠️  STRIPE_SECRET_KEY no encontrado en .env")
 
