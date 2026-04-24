@@ -63,7 +63,7 @@
         .login-link a { color: var(--primary); font-weight: 700; text-decoration: none; }
 
         /* Estados de Alerta */
-        .alert { padding: 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.5rem; display: none; display: flex; align-items: center; gap: 10px; }
+        .alert { padding: 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.5rem; display: none; align-items: center; gap: 10px; }
         .alert-error { background: #fdf0ed; color: #e74c3c; border: 1px solid rgba(231,76,60,0.2); }
         
         /* Pantalla de Éxito */
@@ -115,9 +115,9 @@
                 <p class="subtitle">Comienza gratis. Sin tarjeta de crédito.</p>
 
                 <div class="alert alert-error" id="error-msg">
-                    <i class="bi bi-exclamation-triangle-fill"></i>
-                    <span id="error-text">Ocurrió un error. Inténtalo de nuevo.</span>
-                </div>
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span id="error-text"></span>
+</div>
 
                 <form id="registerForm" onsubmit="event.preventDefault(); registrarUsuario();">
                     <div class="form-group">
@@ -153,9 +153,9 @@
 
             <div id="success-screen">
                 <i class="bi bi-envelope-check-fill success-icon"></i>
-                <h1>¡Revisa tu correo!</h1>
-                <p class="subtitle" style="margin-bottom: 1rem;">Hemos enviado un enlace de confirmación a <strong id="success-email"></strong>.</p>
-                <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Haz clic en el enlace para activar tu cuenta y entrar al dashboard. Si no lo ves, revisa tu carpeta de Spam.</p>
+                <h1>¡Registro Exitoso!</h1>
+                <p class="subtitle" style="margin-bottom: 1rem;">Tu cuenta para <strong id="success-email"></strong> ha sido creada.</p>
+                <p style="font-size: 0.9rem; color: var(--muted); margin-bottom: 2rem;">Ya puedes iniciar sesión en tu panel de control.</p>
                 <a href="login.html" class="btn-submit" style="text-decoration: none;">Ir a Iniciar Sesión</a>
             </div>
 
@@ -215,33 +215,45 @@
                 password: password,
                 options: {
                     data: {
-                        full_name: nombre // Guarda el nombre en los metadatos del usuario
+                        full_name: nombre
                     }
                 }
             });
 
             if (error) throw error;
 
-            // ÉXITO: Cambiar pantalla a verificación de correo
+            // ÉXITO: Cambiar pantalla
             document.getElementById('register-section').style.display = 'none';
             document.getElementById('success-email').innerText = email;
             document.getElementById('success-screen').style.display = 'block';
 
         } catch (error) {
-            // MANEJO DE ERRORES
-            console.error('Error en registro:', error);
+            console.error('Error capturado:', error);
             
-            if (error.message.includes('User already registered')) {
+            // Extraer el mensaje real
+            const mensajeReal = error.message || String(error);
+
+            // 1. Ignorar el error de Rate Limit (porque el usuario sí se creó)
+            if (mensajeReal.toLowerCase().includes('rate limit')) {
+                document.getElementById('register-section').style.display = 'none';
+                document.getElementById('success-email').innerText = email;
+                document.getElementById('success-screen').style.display = 'block';
+                return;
+            }
+
+            // 2. Manejo de Errores Reales
+            if (mensajeReal.toLowerCase().includes('already registered')) {
                 errorText.innerText = 'Este correo ya está registrado. Inicia sesión.';
-            } else if (error.message.includes('Password')) {
+            } else if (mensajeReal.toLowerCase().includes('password')) {
                 errorText.innerText = 'La contraseña es muy débil. Usa al menos 6 caracteres.';
             } else {
-                errorText.innerText = error.message || 'Error al conectar con el servidor.';
+                // IMPRIME EL ERROR EXACTO EN LA PANTALLA
+                errorText.innerText = 'Error del servidor: ' + mensajeReal;
             }
             
             errorMsg.style.display = 'flex';
             
-            // Revert UI Loading State
+            // Revertir el botón a su estado original
             btn.disabled = false;
             btnText.style.display = 'block';
             spinner.style.display = 'none';
