@@ -1002,6 +1002,37 @@ function verificarAcceso(funcionRequerida, event) {
     }
     return true;
 }
+// Al cargar el dashboard
+async function verificarEstadoTrasPago() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Si venimos de Stripe con éxito
+    if (urlParams.get('pago') === 'exitoso') {
+        console.log("¡Pago detectado! Actualizando privilegios...");
+        
+        // 1. Forzamos a Supabase a refrescar la sesión (opcional)
+        const { data: { user } } = await spb.auth.getUser();
+        
+        // 2. Consultamos el perfil actualizado
+        const { data: perfil } = await spb
+            .from('perfiles_profesionales')
+            .select('tipo_plan')
+            .eq('id', user.id)
+            .single();
+
+        if (perfil && perfil.tipo_plan === 'pro') {
+            alert("¡Felicidades! Tu plan Pro ya está activo.");
+            // Aquí puedes desbloquear funciones visualmente
+            renderizarFuncionesPro(); 
+        } else {
+            // Si el webhook aún no termina, reintentamos en 3 segundos
+            setTimeout(verificarEstadoTrasPago, 3000);
+        }
+    }
+}
+
+// Ejecutar al cargar
+verificarEstadoTrasPago();
 
 function intentarNuevoPaciente() {
     if (userPlan !== 'pro' && pacientesCache.length >= 5) {
