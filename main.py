@@ -37,8 +37,8 @@ if not SUPABASE_URL or not SUPABASE_URL.startswith("http"):
 
 app = FastAPI(
     title="Psicogestor API",
-    description="Backend Psicogestor 2.0 — Dev Group Studio",
-    version="2.0.1"
+    description="Backend Psicogestor 2.5 — Dev Group Studio",
+    version="2.5.0"
 )
 
 app.add_middleware(
@@ -119,10 +119,6 @@ class SoapTextoLibre(BaseModel):
 # ==========================================
 
 def llamar_groq(system_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
-    """
-    Llama a Groq con fallback entre modelos.
-    Retorna el texto de respuesta o lanza HTTPException.
-    """
     if not groq_client:
         raise HTTPException(status_code=500, detail="GROQ_API_KEY no configurada en variables de entorno.")
 
@@ -131,8 +127,8 @@ def llamar_groq(system_prompt: str, user_prompt: str, json_mode: bool = False) -
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ],
-        "temperature": 0.3,
-        "max_tokens": 1500,
+        "temperature": 0.4,
+        "max_tokens": 4096, # 🚀 Límite de memoria ampliado para historial profundo
     }
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
@@ -175,7 +171,6 @@ def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
                 raise HTTPException(status_code=404, detail="Perfil profesional no encontrado.")
 
             plan_db = str(perfil.data[0].get("tipo_plan", "")).strip().lower()
-            print(f"[DEBUG] Usuario {user_id} → plan detectado: '{plan_db}'")
 
             if plan_db != "pro":
                 raise HTTPException(
@@ -279,28 +274,40 @@ async def crear_cita(cita: CitaCreate, request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/sesiones/analizar")
-async def analizar_sesion(sesion: SesionAnalisis) -> dict[str, Any]:
+async def analizar_sesion(sesion: SesionAnalisis, request: Request) -> dict[str, Any]:
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.split(" ", 1)[1] if " " in auth_header else ""
+    user_id = verificar_token_y_plan(token, plan_requerido="pro")
+
     prompt_sistema = """
-Eres un asistente clínico para psicólogos. Analiza esta sesión SOAP.
-Devuelve ÚNICAMENTE un JSON válido con esta estructura exacta, sin markdown ni texto extra:
-{
-    "ia_resumen_ejecutivo": "Un párrafo de máximo 3 líneas.",
-    "ia_nube_conceptos": ["concepto1", "concepto2"],
-    "ia_puntaje_animo": 8,
-    "ia_puntaje_ansiedad": 4,
-    "ia_alerta_riesgo": false
-}
-"""
+    Eres un asistente clínico experto. Analiza esta sesión SOAP y devuelve un JSON:
+    { "ia_resumen_ejecutivo": "...", "ia_nube_conceptos": [], "ia_alerta_riesgo": false }
+    """
     texto = f"S: {sesion.s}\nO: {sesion.o}\nA: {sesion.a}\nP: {sesion.p}"
 
     try:
+        # 1. Llamada a IA para el resumen
         raw = llamar_groq(prompt_sistema, texto, json_mode=True)
         analisis_json = json.loads(raw)
+
+        # 2. Guardar en la tabla 'sesiones' de Supabase
+        nueva_sesion = {
+            "profesional_id": user_id,
+            "paciente_id": sesion.paciente_id,
+            "subjetivo": sesion.s,
+            "objetivo": sesion.o,
+            "analisis": sesion.a,
+            "plan": sesion.p,
+            "ia_resumen": analisis_json.get("ia_resumen_ejecutivo", "Resumen no disponible"),
+            "fecha": datetime.now(timezone.utc).isoformat()
+        }
+        
+        supabase.table("sesiones").insert(nueva_sesion).execute()
+
         return {"status": "success", "analisis": analisis_json}
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error IA: {str(e)}")
+        print(f"Error en análisis/guardado: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
 # 9. ENDPOINT — SOAP AUTOMÁTICO
@@ -335,15 +342,12 @@ Si alguna sección no tiene información suficiente, indica: "No se menciona en 
 """
 
     try:
-        print(f"[SOAP] Procesando nota para usuario {user_id}. Longitud: {len(texto)} chars")
         raw = llamar_groq(prompt_sistema, texto, json_mode=True)
-
         soap = json.loads(raw)
         for key in ("s", "o", "a", "p"):
             if key not in soap or not soap[key]:
                 soap[key] = "No se menciona en la nota."
 
-        print(f"[SOAP] ✅ Estructurado correctamente para usuario {user_id}")
         return {"status": "success", "soap": soap}
 
     except HTTPException:
@@ -373,10 +377,8 @@ async def dictar_nota(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail="GROQ_API_KEY no configurada.")
 
     try:
-        print(f"[DICTADO] Procesando audio para usuario {user_id}")
         audio_data = await file.read()
 
-        # Groq tiene API de transcripción (Whisper)
         transcripcion_resp = groq_client.audio.transcriptions.create(
             file=("audio.webm", audio_data, file.content_type),
             model="whisper-large-v3",
@@ -385,8 +387,6 @@ async def dictar_nota(request: Request, file: UploadFile = File(...)):
         )
 
         transcripcion = transcripcion_resp if isinstance(transcripcion_resp, str) else transcripcion_resp.text
-
-        print(f"[DICTADO] ✅ Transcripción completada para usuario {user_id}")
         return {"status": "success", "transcripcion": transcripcion}
 
     except Exception as e:
@@ -403,60 +403,63 @@ async def dictar_nota(request: Request, file: UploadFile = File(...)):
 async def chat_lucia(chat: MensajeChat, request: Request) -> dict[str, Any]:
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Se requiere Authorization: Bearer <token>")
+        raise HTTPException(status_code=401, detail="No autorizado")
 
     token = auth_header.split(" ", 1)[1]
     user_id = verificar_token_y_plan(token, plan_requerido="pro")
 
     try:
-        pacientes_db = supabase.table("pacientes") \
-            .select("id, nombre, motivo_consulta") \
-            .eq("profesional_id", user_id) \
-            .execute()
+        # 1. Jalamos pacientes reales
+        pacientes_db = supabase.table("pacientes").select("id, nombre, motivo_consulta").eq("profesional_id", user_id).execute()
+        
+        # 2. Jalamos las últimas 50 sesiones para dar mucho contexto
+        sesiones_db = supabase.table("sesiones").select("*").eq("profesional_id", user_id).order("fecha", desc=True).limit(50).execute()
 
-        sesiones_db = supabase.table("sesiones") \
-            .select("paciente_id, fecha, subjetivo, analisis, plan") \
-            .eq("profesional_id", user_id) \
-            .order("fecha", desc=True) \
-            .limit(5) \
-            .execute()
-
-        sesiones_por_paciente: dict = {}
+        # Organizar sesiones por paciente
+        sesiones_por_paciente = {}
         for s in (sesiones_db.data or []):
-            pid = s.get("paciente_id")
+            pid = str(s.get("paciente_id")) # 🔥 Fix: Siempre a string
             if pid not in sesiones_por_paciente:
                 sesiones_por_paciente[pid] = []
             sesiones_por_paciente[pid].append(s)
 
-        contexto = "=== EXPEDIENTES CLÍNICOS ===\n\n"
+        # 3. Construir el contexto para la IA
+        contexto = "SISTEMA CLÍNICO - EXPEDIENTES:\n"
         for p in (pacientes_db.data or []):
-            pid = p.get("id")
-            contexto += f"PACIENTE: {p.get('nombre')}\n"
-            contexto += f"Motivo: {p.get('motivo_consulta')}\n"
+            pid = str(p.get("id"))
+            nombre_p = p.get('nombre')
+            contexto += f"\nPACIENTE: {nombre_p}\nMOTIVO: {p.get('motivo_consulta')}\n"
+            
             notas = sesiones_por_paciente.get(pid, [])
-            for n in notas[:3]:
-                fecha = n.get("fecha", "")[:10]
-                contexto += f"  Sesión {fecha}: {n.get('subjetivo','—')} | Plan: {n.get('plan','—')}\n"
-            contexto += "\n"
+            if notas:
+                for idx, n in enumerate(notas):
+                    contexto += f"- Sesión {idx+1} ({n.get('fecha')[:10]}): S:{n.get('subjetivo')} O:{n.get('objetivo')} A:{n.get('analisis')} P:{n.get('plan')}\n"
+            else:
+                contexto += "- Sin sesiones previas.\n"
+
     except Exception as e:
-        contexto = f"Error al cargar expedientes: {str(e)}"
+        contexto = f"Error al leer base de datos: {str(e)}"
 
     prompt_sistema = f"""
-Eres LucIA, asistente de IA clínica de Psicogestor.
-Hablas con un psicólogo profesional. Sé directo, clínico y conciso.
-No te presentes en cada mensaje. Responde con precisión.
+Eres LucIA, asistente analítica de Psicogestor. Tienes acceso a los expedientes clínicos del psicólogo.
+    
+TAREAS:
+- Si preguntan por un paciente (ej. Jose Pablo), lee TODAS sus notas disponibles en el historial provisto.
+- Realiza diagnósticos presuntivos o sugerencias clínicas basadas en la sección [S] y [O].
+- Sugiere cambios en el plan terapéutico [P] si notas estancamiento.
+- Sé muy clínica, profesional y detallada en tus apreciaciones.
+- Si no hay datos, infórmalo directamente.
 
-CONTEXTO DE EXPEDIENTES:
+CONTEXTO REAL DE LA BASE DE DATOS:
 {contexto}
 """
 
     try:
         respuesta = llamar_groq(prompt_sistema, chat.mensaje, json_mode=False)
         return {"status": "success", "respuesta": respuesta}
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # ==========================================
 # 12. ENDPOINT — CALENDARIO .ICS
@@ -478,7 +481,7 @@ async def feed_calendario(profesional_id: str, request: Request):
         ics = [
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
-            "PRODID:-//Dev Group Studio//Psicogestor 2.0//ES",
+            "PRODID:-//Dev Group Studio//Psicogestor 2.5//ES",
             "CALSCALE:GREGORIAN",
             "METHOD:PUBLISH",
             "X-WR-CALNAME:Psicogestor - Agenda",
