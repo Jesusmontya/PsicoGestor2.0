@@ -582,9 +582,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
 
     if event["type"] == "checkout.session.completed":
         session      = event["data"]["object"]
-        usuario_id = session["client_reference_id"]
-        customer_id  = session.get("customer")
-        customer_email = session.get("customer_details", {}).get("email")
+        usuario_id = session.client_reference_id
+        customer_id  = session.customer
+        customer_email = session.customer_details.email
 
         print(f"[STRIPE] ✅ Pago exitoso — usuario: {usuario_id} — email: {customer_email}")
 
@@ -600,7 +600,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
 
     elif event["type"] == "customer.subscription.deleted":
         session = event["data"]["object"]
-        customer_id = session.get("customer")
+        customer_id = session.customer
 
         try:
             supabase.table("perfiles_profesionales") \
