@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 from fastapi.responses import FileResponse
 import stripe
 
+
 # ==========================================
 # 1. CONFIGURACIÓN INICIAL
 # ==========================================
@@ -56,17 +57,9 @@ groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 # Modelos Groq en orden de preferencia
 GROQ_MODELOS = ["llama-3.3-70b-versatile", "llama3-70b-8192", "mixtral-8x7b-32768"]
 
-# ==========================================
-# 2. FRONTEND ESTÁTICO
-# ==========================================
-app.mount("/app", StaticFiles(directory="public", html=True), name="public")
-
-@app.get("/")
-async def root():
-    return FileResponse("public/index.html")
 
 # ==========================================
-# 3. MODELOS PYDANTIC
+# 2. MODELOS PYDANTIC
 # ==========================================
 
 class CitaCreate(BaseModel):
@@ -115,7 +108,7 @@ class SoapTextoLibre(BaseModel):
     texto: str
 
 # ==========================================
-# 4. HELPER: LLAMAR A GROQ CON FALLBACK
+# 3. HELPER: LLAMAR A GROQ CON FALLBACK
 # ==========================================
 
 def llamar_groq(system_prompt: str, user_prompt: str, json_mode: bool = False) -> str:
@@ -150,7 +143,7 @@ def llamar_groq(system_prompt: str, user_prompt: str, json_mode: bool = False) -
     raise HTTPException(status_code=429, detail="Cuota de Groq agotada en todos los modelos. Intenta en unos minutos.")
 
 # ==========================================
-# 5. HELPER: VERIFICAR USUARIO Y PLAN
+# 4. HELPER: VERIFICAR USUARIO Y PLAN
 # ==========================================
 
 def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
@@ -185,7 +178,7 @@ def verificar_token_y_plan(token: str, plan_requerido: str = "pro") -> str:
     return user_id
 
 # ==========================================
-# 6. ENDPOINTS — PACIENTES
+# 5. ENDPOINTS — PACIENTES
 # ==========================================
 
 @app.post("/api/pacientes")
@@ -215,7 +208,7 @@ async def listar_pacientes(request: Request):
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # ==========================================
-# 7. ENDPOINTS — PLANTILLAS
+# 6. ENDPOINTS — PLANTILLAS
 # ==========================================
 
 @app.post("/api/plantillas")
@@ -247,7 +240,7 @@ async def obtener_plantillas(request: Request) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # ==========================================
-# 8. ENDPOINTS — CITAS Y SESIONES
+# 7. ENDPOINTS — CITAS Y SESIONES
 # ==========================================
 
 @app.post("/api/citas")
@@ -310,7 +303,7 @@ async def analizar_sesion(sesion: SesionAnalisis, request: Request) -> dict[str,
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# 9. ENDPOINT — SOAP AUTOMÁTICO
+# 8. ENDPOINT — SOAP AUTOMÁTICO
 # ==========================================
 
 @app.post("/api/soap/estructurar")
@@ -358,7 +351,7 @@ Si alguna sección no tiene información suficiente, indica: "No se menciona en 
         raise HTTPException(status_code=500, detail=f"Error al procesar con IA: {str(e)}")
 
 # ==========================================
-# 10. ENDPOINT — DICTADO DE VOZ LucIA
+# 9. ENDPOINT — DICTADO DE VOZ LucIA
 # ==========================================
 
 @app.post("/api/lucia/dictar")
@@ -396,7 +389,7 @@ async def dictar_nota(request: Request, file: UploadFile = File(...)):
         await file.close()
 
 # ==========================================
-# 11. ENDPOINT — CHAT LucIA
+# 10. ENDPOINT — CHAT LucIA
 # ==========================================
 
 @app.post("/api/chat")
@@ -462,7 +455,7 @@ CONTEXTO REAL DE LA BASE DE DATOS:
 
 
 # ==========================================
-# 12. ENDPOINT — CALENDARIO .ICS
+# 11. ENDPOINT — CALENDARIO .ICS
 # ==========================================
 
 @app.get("/api/calendario/{profesional_id}/psicogestor.ics")
@@ -542,7 +535,7 @@ async def feed_calendario(profesional_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==========================================
-# 13. ENDPOINTS — STRIPE / PAGOS
+# 12. ENDPOINTS — STRIPE / PAGOS
 # ==========================================
 
 @app.post("/api/crear-checkout")
@@ -620,7 +613,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None))
     return {"status": "success"}
 
 # ==========================================
-# 14. HEALTH CHECK
+# 13. HEALTH CHECK
 # ==========================================
 
 @app.get("/api/health")
@@ -631,3 +624,8 @@ async def health():
         "stripe": bool(STRIPE_SECRET_KEY),
         "supabase": bool(SUPABASE_URL and SUPABASE_KEY)
     }
+
+# ==========================================
+# 14. ARCHIVOS ESTÁTICOS AL FINAL (CORRECCIÓN RUTAS)
+# ==========================================
+app.mount("/", StaticFiles(directory="public", html=True), name="public")
