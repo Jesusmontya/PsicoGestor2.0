@@ -253,8 +253,8 @@ footer{background:var(--white);border-top:1px solid var(--border);padding:3.5rem
 
 /* --- Hamburguesa navbar --- */
 .nav-hamburger{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--text);font-size:1.35rem;line-height:1}
-.nav-mobile-menu{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(20px);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:2rem;opacity:0;transition:opacity .25s}
-.nav-mobile-menu.open{display:flex;opacity:1}
+.nav-mobile-menu{display:flex;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.97);backdrop-filter:blur(20px);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:2rem;opacity:0;pointer-events:none;transform:translateX(100%);transition:opacity .28s ease,transform .28s ease}
+.nav-mobile-menu.open{opacity:1;pointer-events:auto;transform:translateX(0)}
 .nav-mobile-menu a,.nav-mobile-menu button.btn-nav-mobile-link{color:var(--text);text-decoration:none;font-size:1.25rem;font-weight:600;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif}
 .nav-mobile-menu .btn-nav{font-size:1rem;padding:.75rem 2rem}
 .nav-mobile-close{position:absolute;top:1.25rem;right:1.5rem;background:none;border:none;font-size:1.6rem;cursor:pointer;color:var(--muted)}
