@@ -183,6 +183,9 @@
         .step-num { width: 32px; height: 32px; background: var(--psico-primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.95rem; flex-shrink: 0; box-shadow: 0 2px 8px rgba(58,123,213,0.3); }
         .step-text h6 { margin: 0 0 4px 0; font-weight: 700; font-size: 1rem; color: var(--text-dark); }
         .step-text p { margin: 0; font-size: 0.85rem; color: var(--text-muted); }
+        
+        /* ESTILOS DE GRABACIÓN LUCIA */
+        .btn-recording { background-color: #e74c3c !important; color: white !important; border-color: #e74c3c !important; animation: pulse-red 1.5s infinite; }
     </style>
 </head>
 <body>
@@ -742,8 +745,27 @@
             </div>
             <div class="modal-body p-4">
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold text-muted">Tu nota libre:</label>
-                    <textarea class="form-control" id="soap-texto-libre" rows="6" placeholder="Ej: El paciente llegó puntual y mencionó que esta semana tuvo varias crisis de ansiedad..."></textarea>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-semibold text-muted mb-0">Tu nota libre:</label>
+                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill d-flex align-items-center gap-1 transition-all" id="btn-dictar" onclick="toggleDictado()">
+                            <i class="bi bi-mic-fill"></i> <span id="txt-dictar">Dictar con LucIA</span>
+                        </button>
+                    </div>
+                    
+                    <div id="dictado-preview-container" class="d-none bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded p-3 mb-3 mt-2 shadow-sm">
+                        <div class="d-flex align-items-center gap-2 mb-2 text-primary small fw-bold">
+                            <span class="spinner-grow spinner-grow-sm d-none" id="dictado-spinner"></span>
+                            <i class="bi bi-robot" id="dictado-icono"></i> 
+                            <span id="dictado-estado">LucIA entendió esto:</span>
+                        </div>
+                        <p class="small text-dark mb-3 fst-italic bg-white p-2 rounded border" id="dictado-texto">...</p>
+                        <div class="d-flex gap-2" id="dictado-acciones">
+                            <button type="button" class="btn btn-sm btn-success py-1 fw-semibold" onclick="confirmarDictado()"><i class="bi bi-check-lg me-1"></i>Añadir a la nota</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger py-1" onclick="descartarDictado()">Descartar</button>
+                        </div>
+                    </div>
+
+                    <textarea class="form-control mt-2" id="soap-texto-libre" rows="6" placeholder="Ej: El paciente llegó puntual y mencionó que esta semana tuvo varias crisis de ansiedad..."></textarea>
                 </div>
                 <button class="btn-psico w-100 mb-3" id="btn-procesar-soap" onclick="procesarSoapAutomatico()">
                     <i class="bi bi-magic me-2"></i>Estructurar con IA
@@ -867,6 +889,32 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script type="module">
+    import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+    
+    // Configuramos para que descargue el modelo de la nube y lo guarde en el navegador
+    env.allowLocalModels = false;
+
+    window.whisperTranscritor = null;
+    window.isWhisperLoading = false;
+
+    window.cargarWhisper = async function() {
+        if (window.whisperTranscritor || window.isWhisperLoading) return;
+        window.isWhisperLoading = true;
+        
+        try {
+            console.log("Descargando Whisper (solo la primera vez)...");
+            // Usamos el modelo tiny que es súper rápido y ligero
+            window.whisperTranscritor = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+            console.log("✅ Whisper listo en el cliente");
+        } catch (e) {
+            console.error("❌ Error cargando Whisper", e);
+        }
+        window.isWhisperLoading = false;
+    }
+</script>
+
 <script>
 // ==========================================
 // SUPABASE
@@ -976,6 +1024,122 @@ function intentarAutoEstructurar() {
     document.getElementById('soap-auto-resultado').classList.add('d-none');
     document.getElementById('soap-auto-error').classList.add('d-none');
     new bootstrap.Modal(document.getElementById('soapAutoModal')).show();
+}
+// ==========================================
+// DICTADO DE VOZ LucIA
+// ==========================================
+let dictadoRecorder = null;
+let dictadoChunks = [];
+let isGrabandoAudio = false;
+
+async function toggleDictado() {
+    if (isGrabandoAudio) {
+        detenerDictado();
+    } else {
+        iniciarDictado();
+    }
+}
+
+async function iniciarDictado() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // AQUÍ ESTÁ EL CAMBIO: Forzamos mejor calidad de audio (128kbps)
+        const opciones = {
+            audioBitsPerSecond: 128000,
+            mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4'
+        };
+        
+        dictadoRecorder = new MediaRecorder(stream, opciones);
+        dictadoChunks = [];
+
+        dictadoRecorder.ondataavailable = e => {
+            if (e.data.size > 0) dictadoChunks.push(e.data);
+        };
+
+        dictadoRecorder.onstop = procesarAudioDictado;
+        dictadoRecorder.start();
+        isGrabandoAudio = true;
+
+        const btn = document.getElementById('btn-dictar');
+        btn.classList.add('btn-recording');
+        document.getElementById('txt-dictar').innerText = 'Detener grabación';
+        document.getElementById('dictado-preview-container').classList.add('d-none');
+        
+    } catch (err) {
+        alert('LucIA necesita acceso al micrófono. Por favor, acepta los permisos en tu navegador.');
+        console.error('Error micrófono:', err);
+    }
+}
+function detenerDictado() {
+    if (dictadoRecorder && isGrabandoAudio) {
+        dictadoRecorder.stop();
+        isGrabandoAudio = false;
+        // Apagar luz roja de la cámara/micro del navegador
+        dictadoRecorder.stream.getTracks().forEach(track => track.stop()); 
+        
+        // Restaurar botón UI
+        const btn = document.getElementById('btn-dictar');
+        btn.classList.remove('btn-recording');
+        document.getElementById('txt-dictar').innerText = 'Dictar con LucIA';
+    }
+}
+
+async function procesarAudioDictado() {
+    const audioBlob = new Blob(dictadoChunks, { type: 'audio/webm' }); 
+    const previewCont = document.getElementById('dictado-preview-container');
+    const texto = document.getElementById('dictado-texto');
+    const estado = document.getElementById('dictado-estado');
+
+    // UI: Estado de carga
+    previewCont.classList.remove('d-none');
+    estado.innerText = 'Transcribiendo dictado...';
+    texto.innerText = '...';
+
+    try {
+        const token = await getToken();
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+
+        const res = await fetch('/api/lucia/dictar', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.detail || 'Error en transcripción');
+
+        // Mostramos el texto TAL CUAL llegó del backend
+        estado.innerText = 'LucIA escuchó esto:';
+        texto.innerText = data.transcripcion; 
+        
+        // Habilitamos los botones de acción (Añadir / Descartar)
+        document.getElementById('dictado-acciones').classList.remove('d-none');
+
+    } catch (err) {
+        texto.innerText = "Error: No se pudo transcribir el audio.";
+        console.error(err);
+    }
+}
+function confirmarDictado() {
+    const textoGrabado = document.getElementById('dictado-texto').innerText;
+    const textarea = document.getElementById('soap-texto-libre');
+    
+    // Anexar sin borrar lo que ya estaba escrito
+    if(textarea.value.trim() === '') {
+        textarea.value = textoGrabado;
+    } else {
+        textarea.value = textarea.value + '\n\n' + textoGrabado;
+    }
+    
+    descartarDictado();
+}
+
+function descartarDictado() {
+    document.getElementById('dictado-preview-container').classList.add('d-none');
+    document.getElementById('dictado-texto').innerText = '';
 }
 
 function intentarResumenPresesion() {
@@ -1627,7 +1791,7 @@ async function procesarSoapAutomatico() {
             }
 
             if (res.status === 429) {
-                errorMsgEl.innerHTML = '⏳ <strong>Cuota de IA agotada.</strong> Espera 1 minuto e intenta de nuevo, o activa facturación en <a href="https://aistudio.google.com" target="_blank">Google AI Studio</a>.';
+                errorMsgEl.innerHTML = '⏳ <strong>Servicio de IA temporalmente no disponible.</strong> Estamos trabajando en ello. Intenta en unos minutos.';
                 errorEl.classList.remove('d-none');
                 return;
             }
