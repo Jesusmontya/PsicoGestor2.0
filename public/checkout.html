@@ -89,7 +89,9 @@ body{font-family:'DM Sans',sans-serif;background-color:var(--bg);color:var(--tex
     // 1. Tus llaves maestras de Supabase
     const SUPABASE_URL = 'https://adbklyrecnyryusktftr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYmtseXJlY255cnl1c2t0ZnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjQ5MTIsImV4cCI6MjA5MDg0MDkxMn0.sK3cbVoRX1PjQx9Me-9PTFXq0wEpWB1JR7EuVby4Gpw';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // SOLUCIÓN AQUÍ: Le cambiamos el nombre a "clienteSupabase"
+    const clienteSupabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Tu dominio oficial de producción
     const BACKEND_URL = 'https://psicogestor.devgroupstudio.xyz/api/crear-checkout';
@@ -106,8 +108,8 @@ body{font-family:'DM Sans',sans-serif;background-color:var(--bg);color:var(--tex
             btnText.style.display = 'none';
             btnLoader.style.display = 'block';
 
-            // Verificamos quién es el usuario conectado
-            const { data: { session }, error } = await supabase.auth.getSession();
+            // Verificamos quién es el usuario conectado usando "clienteSupabase"
+            const { data: { session }, error } = await clienteSupabase.auth.getSession();
             
             if (error || !session) {
                 alert('La sesión expiró. Por favor, inicia sesión de nuevo para continuar con el pago.');
