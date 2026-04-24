@@ -6,3 +6,4 @@ stripe
 google-genai
 pydantic
 gunicorn
+groq
