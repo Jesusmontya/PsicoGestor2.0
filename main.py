@@ -27,6 +27,7 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 STRIPE_PRICE_ID     = os.getenv("STRIPE_PRICE_ID", "price_1TNi4nCSdv7aogFNHp8XAqjc")
 
 if STRIPE_SECRET_KEY:
+    # LIMPIEZA DE LA CLAVE STRIPE: Quita espacios y saltos de línea (\n)
     stripe.api_key = STRIPE_SECRET_KEY.strip()
 else:
     print("⚠️  STRIPE_SECRET_KEY no encontrado en .env")
@@ -557,8 +558,8 @@ async def crear_checkout(request: Request):
             payment_method_types=["card"],
             line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
             mode="subscription",
-            success_url=f"{DOMAIN}/app/dashboard.html?pago=exitoso",
-            cancel_url=f"{DOMAIN}/app/checkout.html?pago=cancelado",
+            success_url=f"{DOMAIN}/dashboard.html?pago=exitoso",
+            cancel_url=f"{DOMAIN}/checkout.html?pago=cancelado",
             client_reference_id=user_id
         )
         return JSONResponse(content={"url": session.url})
