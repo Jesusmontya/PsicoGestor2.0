@@ -115,6 +115,217 @@
                 <p class="subtitle">Accede a tu panel de Psicogestor.</p>
 
                 <div class="alert alert-error" id="error-msg">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <span id="error-text"></span>
+</div>
+
+                <form id="loginForm" onsubmit="event.preventDefault(); iniciarSesion();">
+                    <div class="form-group">
+                        <label class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" id="log-email" placeholder="doctor@clinica.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Contraseña</label>
+                        <input type="password" class="form-control" id="log-password" placeholder="••••••••" required>
+                    </div>
+
+                    <button type="submit" class="btn-submit" id="btn-login">
+                        <span id="btn-text">Ingresar al Sistema</span>
+                        <div class="spinner" id="btn-spinner"></div>
+                    </button>
+                </form>
+
+                <div class="login-link">
+                    ¿Aún no tienes cuenta? <a href="/app/registro.html>Regístrate aquí</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="feature-card">
+            <i class="bi bi-stars"></i>
+            <h3>Únete al futuro clínico</h3>
+            <p>"LucIA me ahorra 20 minutos de papeleo por paciente. Por fin tengo tiempo para enfocarme 100% en la terapia y no en llenar formatos."</p>
+            <div style="margin-top: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.8rem;">DR</div>
+                <div style="text-align: left;">
+                    <div style="font-size: 0.85rem; font-weight: 700;">Dr. Raúl Domínguez</div>
+                    <div style="font-size: 0.75rem; opacity: 0.8;">Psicólogo Clínico</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 1.5rem; margin-top: 3rem; font-size: 0.85rem; font-weight: 500;">
+            <span><i class="bi bi-shield-check" style="color:#2ecc71;"></i> Datos Cifrados</span>
+            <span><i class="bi bi-file-earmark-medical" style="color:#2ecc71;"></i> Notas SOAP IA</span>
+            <span><i class="bi bi-check-circle" style="color:#2ecc71;"></i> Cancelación libre</span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Configuración Supabase
+    const SUPABASE_URL = 'https://adbklyrecnyryusktftr.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFkYmtseXJlY255cnl1c2t0ZnRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyNjQ5MTIsImV4cCI6MjA5MDg0MDkxMn0.sK3cbVoRX1PjQx9Me-9PTFXq0wEpWB1JR7EuVby4Gpw';
+    const spb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- Verificar sesión activa al cargar la página ---
+    async function verificarSesion() {
+        const { data: { session }, error } = await spb.auth.getSession();
+        
+        if (session) {
+            // Si hay sesión, redirige directo sin mostrar el formulario
+            window.location.href = 'dashboard.html';
+        } else {
+            // Si no hay sesión, muestra el formulario suavemente
+            document.body.style.opacity = '1';
+        }
+    }
+    
+    // Ejecutar la verificación inmediatamente
+    verificarSesion();
+
+    async function iniciarSesion() {
+        const email = document.getElementById('log-email').value.trim();
+        const password = document.getElementById('log-password').value;
+        
+        const btn = document.getElementById('btn-login');
+        const btnText = document.getElementById('btn-text');
+        const spinner = document.getElementById('btn-spinner');
+        const errorMsg = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+
+        // UI Loading State
+        btn.disabled = true;
+        btnText.style.display = 'none';
+        spinner.style.display = 'block';
+        errorMsg.style.display = 'none';
+
+        try {
+            // Llamada a Supabase para login
+            const { data, error } = await spb.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
+
+            if (error) throw error;
+
+            // ÉXITO
+            btnText.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Acceso Permitido';
+            btn.style.background = '#27ae60';
+            btn.style.boxShadow = '0 4px 14px rgba(39, 174, 96, 0.35)';
+            spinner.style.display = 'none';
+            btnText.style.display = 'block';
+            
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 500);
+
+        } catch (error) {
+            // MANEJO DE ERRORES
+            console.error('Error en login:', error);
+            
+            if (error.message.includes('Email not confirmed')) {
+                errorText.innerText = 'Por favor confirma tu correo electrónico antes de iniciar sesión.';
+            } else {
+                errorText.innerText = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+            }
+            
+            errorMsg.style.display = 'flex';
+            
+            // Revert UI Loading State
+            btn.disabled = false;
+            btnText.style.display = 'block';
+            spinner.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>        /* Panel Izquierdo (Formulario) */
+        .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            background: white;
+            position: relative;
+        }
+
+        .form-wrapper { width: 100%; max-width: 400px; }
+
+        .brand { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 10px; margin-bottom: 2rem; text-decoration: none; }
+        .brand i { font-size: 1.8rem; color: var(--cyan); }
+
+        h1 { font-family: 'Playfair Display', serif; font-size: 2rem; margin-bottom: 0.5rem; color: var(--text); }
+        .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 2rem; }
+
+        .form-group { margin-bottom: 1.25rem; }
+        .form-label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
+        .form-control { width: 100%; padding: 0.85rem 1rem; border-radius: 8px; border: 1px solid var(--border); font-family: inherit; font-size: 0.95rem; transition: all 0.2s; background: #fcfcfc; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(58,123,213,0.1); background: white; }
+
+        .btn-submit { width: 100%; background: var(--grad); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 700; font-size: 1rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(58,123,213,0.3); }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(58,123,213,0.4); }
+        .btn-submit:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .login-link { text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--muted); }
+        .login-link a { color: var(--primary); font-weight: 700; text-decoration: none; }
+
+        /* Estados de Alerta */
+        .alert { padding: 1rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; margin-bottom: 1.5rem; display: none; align-items: center; gap: 10px; }
+        .alert-error { background: #fdf0ed; color: #e74c3c; border: 1px solid rgba(231,76,60,0.2); }
+        
+        /* Panel Derecho (Propuesta de Valor) */
+        .right-panel {
+            flex: 1;
+            background: var(--grad);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 3rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .right-panel::before {
+            content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, transparent 60%); pointer-events: none;
+        }
+
+        .feature-card { background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); padding: 2rem; border-radius: 16px; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .feature-card i { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+        .feature-card h3 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 1rem; }
+        .feature-card p { font-size: 0.95rem; line-height: 1.6; opacity: 0.9; }
+
+        /* Spinner de carga */
+        .spinner { width: 1.2rem; height: 1.2rem; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 0.8s linear infinite; display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 900px) { .right-panel { display: none; } }
+    </style>
+</head>
+<body>
+
+<div class="split-container">
+    
+    <div class="left-panel">
+        <div class="form-wrapper">
+            <a href="index.html" class="brand"><i class="bi bi-brain"></i> Psicogestor</a>
+            
+            <div id="login-section">
+                <h1>Bienvenido de nuevo</h1>
+                <p class="subtitle">Accede a tu panel de Psicogestor.</p>
+
+                <div class="alert alert-error" id="error-msg">
                     <i class="bi bi-exclamation-triangle-fill"></i>
                     <span id="error-text">Ocurrió un error. Inténtalo de nuevo.</span>
                 </div>
