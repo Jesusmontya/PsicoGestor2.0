@@ -7,3 +7,4 @@ google-genai
 pydantic
 gunicorn
 groq
+python-multipart
